@@ -17,3 +17,19 @@ TraceGuard provides a command-line interface for common operations.
 ### SBOM Operations
 
 Parse an SBOM file:
+
+## SBOM Endpoints
+
+### List SBOMs
+
+GET /api/sboms
+
+Returns a list of all SBOMs in the system.
+
+### Create SBOM
+
+POST /api/sboms
+
+Create a new SBOM.
+
+Request Body:

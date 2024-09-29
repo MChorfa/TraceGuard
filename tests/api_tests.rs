@@ -130,3 +130,51 @@ async fn test_create_provenance_record() {
 
     assert_eq!(response.status(), StatusCode::CREATED);
 }
+
+#[tokio::test]
+async fn test_create_sbom() {
+    let db = Database::new("postgres://localhost/traceguard_test").await.unwrap();
+    let app = api::create_router(db);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/sboms")
+                .header("Content-Type", "application/json")
+                .body(Body::from(
+                    serde_json::to_string(&json!({
+                        "format": "CycloneDX",
+                        "version": "1.4",
+                        "content": "{\"test\":\"sbom\"}"
+                    }))
+                    .unwrap(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::CREATED);
+}
+
+#[tokio::test]
+async fn test_list_sboms() {
+    let db = Database::new("postgres://localhost/traceguard_test").await.unwrap();
+    let app = api::create_router(db);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/api/sboms")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+}
+
+// Add more tests for other endpoints
