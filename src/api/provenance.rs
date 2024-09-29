@@ -1,47 +1,75 @@
 use axum::{
-    extract::State,
+    extract::{Path, State},
     Json,
 };
 use serde::{Deserialize, Serialize};
-use crate::database::Database;
+use sqlx::PgPool;
+use tracing::{error, info, instrument};
 use crate::error::AppError;
-use tracing::{info, error, instrument};
+use crate::auth::AuthUser;
+use moka::future::Cache;
+use std::sync::Arc;
+use std::time::Duration;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ProvenanceRecord {
     id: i32,
     artifact_id: String,
     slsa_level: i32,
     metadata: serde_json::Value,
+    created_at: chrono::DateTime<chrono::Utc>,
 }
 
-#[instrument(skip(db))]
-pub async fn list_provenance_records(
-    State(db): State<Database>,
-) -> Result<Json<Vec<ProvenanceRecord>>, AppError> {
-    info!("Fetching list of provenance records");
-    let records = db.fetch_provenance_records().await.map_err(|e| {
-        error!("Failed to fetch provenance records: {:?}", e);
-        AppError::DatabaseError(e)
-    })?;
-    Ok(Json(records))
+pub struct AppState {
+    db: PgPool,
+    cache: Arc<Cache<i32, ProvenanceRecord>>,
 }
 
-#[instrument(skip(db, record))]
-pub async fn create_provenance_record(
-    State(db): State<Database>,
-    Json(record): Json<ProvenanceRecord>,
+impl AppState {
+    pub fn new(db: PgPool) -> Self {
+        let cache = Cache::builder()
+            .time_to_live(Duration::from_secs(300)) // 5 minutes
+            .build();
+        Self { db, cache: Arc::new(cache) }
+    }
+}
+
+#[instrument(skip(state, _user))]
+pub async fn get_provenance_record(
+    State(state): State<AppState>,
+    Path(id): Path<i32>,
+    _user: AuthUser,
 ) -> Result<Json<ProvenanceRecord>, AppError> {
-    info!("Creating new provenance record");
-    if record.artifact_id.is_empty() || record.slsa_level == 0 {
-        error!("Invalid provenance data provided");
-        return Err(AppError::ValidationError("Invalid provenance data".to_string()));
+    info!("Fetching provenance record with id: {}", id);
+
+    if let Some(cached_record) = state.cache.get(&id).await {
+        info!("Cache hit for provenance record: id={}", id);
+        return Ok(Json(cached_record));
     }
 
-    let created_record = db.create_provenance_record(record).await.map_err(|e| {
-        error!("Failed to create provenance record: {:?}", e);
+    let record = sqlx::query_as!(
+        ProvenanceRecord,
+        r#"
+        SELECT id, artifact_id, slsa_level, metadata, created_at
+        FROM provenance_records
+        WHERE id = $1
+        "#,
+        id
+    )
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| {
+        error!("Failed to fetch provenance record: {:?}", e);
         AppError::DatabaseError(e)
+    })?
+    .ok_or_else(|| {
+        error!("Provenance record not found: id={}", id);
+        AppError::NotFoundError("Provenance record not found".to_string())
     })?;
-    info!("Provenance record created successfully");
-    Ok(Json(created_record))
+
+    state.cache.insert(id, record.clone()).await;
+    info!("Successfully fetched and cached provenance record: id={}", id);
+    Ok(Json(record))
 }
+
+// Update other functions to use AppState instead of PgPool

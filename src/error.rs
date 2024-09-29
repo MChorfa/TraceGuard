@@ -24,6 +24,9 @@ pub enum AppError {
     #[error("Not found: {0}")]
     NotFoundError(String),
 
+    #[error("Rate limit exceeded")]
+    RateLimitExceeded,
+
     #[error("Internal server error")]
     InternalServerError,
 
@@ -42,6 +45,7 @@ impl IntoResponse for AppError {
             AppError::AuthenticationError(ref message) => (StatusCode::UNAUTHORIZED, message),
             AppError::AuthorizationError(ref message) => (StatusCode::FORBIDDEN, message),
             AppError::NotFoundError(ref message) => (StatusCode::NOT_FOUND, message),
+            AppError::RateLimitExceeded => (StatusCode::TOO_MANY_REQUESTS, "Rate limit exceeded"),
             AppError::InternalServerError => (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error"),
             AppError::ExternalServiceError(ref message) => {
                 error!("External service error: {}", message);

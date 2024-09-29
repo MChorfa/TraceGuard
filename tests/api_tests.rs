@@ -4,8 +4,10 @@ use axum::{
     Router,
 };
 use serde_json::json;
+use sqlx::PgPool;
 use tower::ServiceExt;
 use traceguard::{api, database::Database};
+use crate::error::AppError;
 
 #[tokio::test]
 async fn test_register_user() {
@@ -239,6 +241,76 @@ async fn test_create_provenance_record() {
     assert_eq!(record["artifact_id"], "test-artifact");
     assert_eq!(record["slsa_level"], 2);
     assert_eq!(record["metadata"], json!({"key": "value"}));
+}
+
+#[sqlx::test]
+async fn test_get_provenance_records(pool: PgPool) -> Result<(), AppError> {
+    // Insert test data
+    sqlx::query!(
+        r#"
+        INSERT INTO provenance_records (artifact_id, slsa_level, metadata)
+        VALUES ($1, $2, $3)
+        "#,
+        "test-artifact-1",
+        2,
+        json!({"key": "value"})
+    )
+    .execute(&pool)
+    .await?;
+
+    let app = api::create_router(pool);
+
+    let response = app
+        .oneshot(Request::builder().uri("/api/provenance").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+    let records: Vec<serde_json::Value> = serde_json::from_slice(&body).unwrap();
+
+    assert!(!records.is_empty());
+    assert_eq!(records[0]["artifact_id"], "test-artifact-1");
+    assert_eq!(records[0]["slsa_level"], 2);
+
+    Ok(())
+}
+
+#[sqlx::test]
+async fn test_get_provenance_record(pool: PgPool) -> Result<(), AppError> {
+    // Insert test data
+    let record_id = sqlx::query!(
+        r#"
+        INSERT INTO provenance_records (artifact_id, slsa_level, metadata)
+        VALUES ($1, $2, $3)
+        RETURNING id
+        "#,
+        "test-artifact-2",
+        3,
+        json!({"key": "value"})
+    )
+    .fetch_one(&pool)
+    .await?
+    .id;
+
+    let app = api::create_router(pool);
+
+    let response = app
+        .oneshot(Request::builder().uri(&format!("/api/provenance/{}", record_id)).body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
+    let record: serde_json::Value = serde_json::from_slice(&body).unwrap();
+
+    assert_eq!(record["id"], record_id);
+    assert_eq!(record["artifact_id"], "test-artifact-2");
+    assert_eq!(record["slsa_level"], 3);
+
+    Ok(())
 }
 
 // Add more tests for other endpoints

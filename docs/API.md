@@ -40,7 +40,9 @@ Request Body:
 
 GET /api/provenance
 
-Returns a list of all provenance records in the system.
+Retrieves a list of all provenance records.
+
+Response Body:
 
 ### Create Provenance Record
 
