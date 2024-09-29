@@ -1,0 +1,30 @@
+version: "3.9"
+
+services:
+  traceguard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: traceguard-app
+    ports:
+      - "8080:8080"
+    environment:
+      - RUST_LOG=info
+    volumes:
+      - .:/usr/src/traceguard
+    command: cargo run --release
+
+  postgres:
+    image: postgres:17.0
+    container_name: traceguard-db
+    environment:
+      POSTGRES_USER: traceguard
+      POSTGRES_PASSWORD: traceguard
+      POSTGRES_DB: traceguard
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
