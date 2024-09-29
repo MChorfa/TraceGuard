@@ -4,26 +4,17 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+axum = "0.6.0"
 tokio = { version = "1.0", features = ["full"] }
-axum = "0.6"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-uuid = { version = "1.0", features = ["v4", "serde"] }
-chrono = { version = "0.4", features = ["serde"] }
+sqlx = { version = "0.6", features = ["runtime-tokio-rustls", "postgres"] }
 tracing = "0.1"
 tracing-subscriber = "0.3"
-opentelemetry = { version = "0.18", features = ["rt-tokio"] }
-opentelemetry-otlp = "0.11"
-async-trait = "0.1"
-thiserror = "1.0"
 anyhow = "1.0"
-reqwest = { version = "0.11", features = ["json"] }
-sqlx = { version = "0.6", features = ["postgres", "runtime-tokio-native-tls", "chrono", "uuid"] }
-azure_storage_blobs = "0.10"
-apache-iceberg = "0.1"
-sigstore = "0.6"
-opa = "0.5"
-clap = "3.0"
+thiserror = "1.0"
+argon2 = "0.5"
+jsonwebtoken = "8.0"
 
 [workspace]
 members = ["web_ui"]

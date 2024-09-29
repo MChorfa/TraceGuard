@@ -1,6 +1,6 @@
 # TraceGuard API Documentation
 
-This document outlines the main API endpoints and CLI commands provided by TraceGuard for managing SBOMs, provenance, and compliance information.
+This document outlines the main API endpoints provided by TraceGuard for managing SBOMs, provenance, and compliance information.
 
 ## Authentication
 

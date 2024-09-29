@@ -12,6 +12,7 @@ TraceGuard is a robust, enterprise-grade platform designed for secure, traceable
 - Flexible Deployment
 - Observability (OpenTelemetry)
 - Web UI for SBOM and Provenance Management
+- CLI for CI/CD pipelines
 
 ## Project Structure
 
