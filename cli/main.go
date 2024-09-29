@@ -18,6 +18,8 @@ func main() {
 	rootCmd.AddCommand(deployCmd())
 	rootCmd.AddCommand(sbomCmd())
 	rootCmd.AddCommand(provenanceCmd())
+	rootCmd.AddCommand(complianceCmd())
+	rootCmd.AddCommand(authCmd())
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -97,6 +99,51 @@ func provenanceCmd() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			fmt.Println("Verifying provenance record...")
 			// Implement provenance record verification logic
+		},
+	})
+
+	return cmd
+}
+
+func complianceCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "compliance",
+		Short: "Manage compliance reports",
+	}
+
+	cmd.AddCommand(&cobra.Command{
+		Use:   "generate",
+		Short: "Generate a compliance report",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println("Generating compliance report...")
+			// Implement compliance report generation logic
+		},
+	})
+
+	return cmd
+}
+
+func authCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "auth",
+		Short: "Manage authentication",
+	}
+
+	cmd.AddCommand(&cobra.Command{
+		Use:   "login",
+		Short: "Log in to TraceGuard",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println("Logging in...")
+			// Implement login logic
+		},
+	})
+
+	cmd.AddCommand(&cobra.Command{
+		Use:   "logout",
+		Short: "Log out from TraceGuard",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println("Logging out...")
+			// Implement logout logic
 		},
 	})
 
