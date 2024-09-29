@@ -9,7 +9,8 @@ use serde_json::json;
 use crate::database::Database;
 use crate::sbom::sbom_parser::parse_sbom;
 use crate::provenance::provenance_api::{ProvenanceRecord, record_provenance};
-use crate::auth::{register_user, login_user};
+use crate::compliance::compliance_engine::generate_compliance_report;
+use crate::auth::{AuthUser, register_user, login_user};
 use crate::error::AppError;
 
 pub fn create_router(db: Database) -> Router {
@@ -20,62 +21,6 @@ pub fn create_router(db: Database) -> Router {
         .route("/api/provenance", get(get_provenance_records).post(create_provenance_record))
         .route("/api/compliance/report", get(generate_compliance_report))
         .with_state(db)
-}
-
-async fn get_sboms(
-    auth: AuthUser,
-    State(db): State<Database>,
-) -> Result<Json<Vec<crate::sbom::sbom_parser::SBOM>>, AppError> {
-    let sboms = db.get_sboms().await?;
-    Ok(Json(sboms))
-}
-
-async fn upload_sbom(
-    auth: AuthUser,
-    State(db): State<Database>,
-    mut multipart: Multipart,
-) -> Result<impl IntoResponse, AppError> {
-    while let Some(field) = multipart.next_field().await? {
-        let name = field.name().unwrap().to_string();
-        if name == "sbom" {
-            let data = field.bytes().await?;
-            let sbom_str = String::from_utf8(data.to_vec())?;
-            let sbom = parse_sbom(&sbom_str)?;
-            db.store_sbom(&sbom).await?;
-            return Ok((StatusCode::CREATED, Json(json!({"message": "SBOM uploaded successfully"}))));
-        }
-    }
-    Err(AppError::BadRequest("No SBOM file found in request".to_string()))
-}
-
-async fn get_provenance_records(
-    auth: AuthUser,
-    State(db): State<Database>,
-) -> Result<Json<Vec<ProvenanceRecord>>, AppError> {
-    let records = db.get_provenance_records().await?;
-    Ok(Json(records))
-}
-
-async fn create_provenance_record(
-    auth: AuthUser,
-    State(db): State<Database>,
-    Json(payload): Json<serde_json::Value>,
-) -> Result<impl IntoResponse, AppError> {
-    let artifact_id = payload["artifact_id"].as_str().ok_or(AppError::BadRequest("Missing artifact_id".to_string()))?;
-    let slsa_level = payload["slsa_level"].as_u64().ok_or(AppError::BadRequest("Missing or invalid slsa_level".to_string()))?;
-    
-    let record = record_provenance(artifact_id, slsa_level as u8, Some(payload)).await?;
-    db.store_provenance(&record).await?;
-    
-    Ok((StatusCode::CREATED, Json(json!({"message": "Provenance record created successfully"}))))
-}
-
-async fn generate_compliance_report(auth: AuthUser) -> Result<impl IntoResponse, AppError> {
-    // This is a placeholder. In a real implementation, you would generate a compliance report.
-    Ok(Json(json!({
-        "status": "success",
-        "message": "Compliance report generated successfully"
-    })))
 }
 
 async fn register(
@@ -99,4 +44,45 @@ async fn login(
 
     let token = login_user(&db.pool, username, password).await?;
     Ok((StatusCode::OK, Json(json!({"token": token}))))
+}
+
+async fn get_sboms(auth: AuthUser, State(db): State<Database>) -> Result<impl IntoResponse, AppError> {
+    let sboms = db.get_sboms().await?;
+    Ok(Json(json!(sboms)))
+}
+
+async fn upload_sbom(
+    auth: AuthUser,
+    State(db): State<Database>,
+    mut multipart: Multipart,
+) -> Result<impl IntoResponse, AppError> {
+    while let Some(field) = multipart.next_field().await? {
+        let name = field.name().unwrap_or("").to_string();
+        if name == "sbom" {
+            let data = field.bytes().await?;
+            let sbom = parse_sbom(&data)?;
+            db.insert_sbom(&sbom).await?;
+            return Ok((StatusCode::CREATED, Json(json!({"message": "SBOM uploaded successfully"}))));
+        }
+    }
+    Err(AppError::BadRequest("No SBOM file found in request".to_string()))
+}
+
+async fn get_provenance_records(auth: AuthUser, State(db): State<Database>) -> Result<impl IntoResponse, AppError> {
+    let records = db.get_provenance_records().await?;
+    Ok(Json(json!(records)))
+}
+
+async fn create_provenance_record(
+    auth: AuthUser,
+    State(db): State<Database>,
+    Json(payload): Json<ProvenanceRecord>,
+) -> Result<impl IntoResponse, AppError> {
+    record_provenance(&db.pool, &payload).await?;
+    Ok((StatusCode::CREATED, Json(json!({"message": "Provenance record created successfully"}))))
+}
+
+async fn generate_compliance_report(auth: AuthUser, State(db): State<Database>) -> Result<impl IntoResponse, AppError> {
+    let report = generate_compliance_report(&db.pool).await?;
+    Ok(Json(json!({"report": report})))
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from '@material-ui/core';
+import { Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography, TextField } from '@material-ui/core';
 import axios from 'axios';
 
 interface DashboardProps {
@@ -23,6 +23,8 @@ interface ProvenanceRecord {
 const Dashboard: React.FC<DashboardProps> = ({ setToken }) => {
   const [sboms, setSboms] = useState<SBOM[]>([]);
   const [provenanceRecords, setProvenanceRecords] = useState<ProvenanceRecord[]>([]);
+  const [sbomFile, setSbomFile] = useState<File | null>(null);
+  const [complianceReport, setComplianceReport] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSBOMs();
@@ -47,6 +49,34 @@ const Dashboard: React.FC<DashboardProps> = ({ setToken }) => {
     }
   };
 
+  const handleSbomUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSbomFile(file);
+      const formData = new FormData();
+      formData.append('sbom', file);
+      try {
+        await axios.post('/api/sboms', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+        fetchSBOMs();
+      } catch (error) {
+        console.error('Error uploading SBOM:', error);
+      }
+    }
+  };
+
+  const generateComplianceReport = async () => {
+    try {
+      const response = await axios.get('/api/compliance/report');
+      setComplianceReport(response.data);
+    } catch (error) {
+      console.error('Error generating compliance report:', error);
+    }
+  };
+
   const handleLogout = () => {
     setToken(null);
   };
@@ -54,7 +84,22 @@ const Dashboard: React.FC<DashboardProps> = ({ setToken }) => {
   return (
     <div>
       <Button onClick={handleLogout}>Logout</Button>
-      <Typography variant="h4">Dashboard</Typography>
+      <Paper style={{ margin: '20px 0', padding: '20px' }}>
+        <Typography variant="h5">Upload SBOM</Typography>
+        <input
+          accept=".json,.xml"
+          style={{ display: 'none' }}
+          id="sbom-file-upload"
+          type="file"
+          onChange={handleSbomUpload}
+        />
+        <label htmlFor="sbom-file-upload">
+          <Button variant="contained" component="span">
+            Upload SBOM
+          </Button>
+        </label>
+        {sbomFile && <Typography>{sbomFile.name}</Typography>}
+      </Paper>
       <Paper style={{ margin: '20px 0', padding: '20px' }}>
         <Typography variant="h5">SBOMs</Typography>
         <TableContainer>
@@ -104,6 +149,22 @@ const Dashboard: React.FC<DashboardProps> = ({ setToken }) => {
             </TableBody>
           </Table>
         </TableContainer>
+      </Paper>
+      <Paper style={{ margin: '20px 0', padding: '20px' }}>
+        <Typography variant="h5">Compliance Report</Typography>
+        <Button onClick={generateComplianceReport} variant="contained" color="primary">
+          Generate Compliance Report
+        </Button>
+        {complianceReport && (
+          <TextField
+            multiline
+            fullWidth
+            rows={10}
+            value={complianceReport}
+            variant="outlined"
+            margin="normal"
+          />
+        )}
       </Paper>
     </div>
   );

@@ -7,6 +7,81 @@ use tower::ServiceExt;
 use traceguard::{api, database::Database};
 
 #[tokio::test]
+async fn test_register_user() {
+    let db = Database::new("postgres://localhost/traceguard_test").await.unwrap();
+    let app = api::create_router(db);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/register")
+                .header("Content-Type", "application/json")
+                .body(Body::from(
+                    serde_json::to_string(&json!({
+                        "username": "testuser",
+                        "email": "testuser@example.com",
+                        "password": "testpassword"
+                    }))
+                    .unwrap(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::CREATED);
+}
+
+#[tokio::test]
+async fn test_login_user() {
+    let db = Database::new("postgres://localhost/traceguard_test").await.unwrap();
+    let app = api::create_router(db);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/login")
+                .header("Content-Type", "application/json")
+                .body(Body::from(
+                    serde_json::to_string(&json!({
+                        "username": "testuser",
+                        "password": "testpassword"
+                    }))
+                    .unwrap(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    // Add assertion to check if the response contains a JWT token
+}
+
+#[tokio::test]
+async fn test_upload_sbom() {
+    let db = Database::new("postgres://localhost/traceguard_test").await.unwrap();
+    let app = api::create_router(db);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/sboms")
+                .header("Content-Type", "multipart/form-data")
+                .header("Authorization", "Bearer test_token")
+                .body(Body::from("--X-BOUNDARY\r\nContent-Disposition: form-data; name=\"sbom\"; filename=\"test.json\"\r\nContent-Type: application/json\r\n\r\n{\"test\":\"sbom\"}\r\n--X-BOUNDARY--\r\n"))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::CREATED);
+}
+
+#[tokio::test]
 async fn test_get_sboms() {
     let db = Database::new("postgres://localhost/traceguard_test").await.unwrap();
     let app = api::create_router(db);
@@ -14,6 +89,7 @@ async fn test_get_sboms() {
     let response = app
         .oneshot(
             Request::builder()
+                .method("GET")
                 .uri("/api/sboms")
                 .header("Authorization", "Bearer test_token")
                 .body(Body::empty())
@@ -23,45 +99,6 @@ async fn test_get_sboms() {
         .unwrap();
 
     assert_eq!(response.status(), StatusCode::OK);
-}
-
-#[tokio::test]
-async fn test_upload_sbom() {
-    let db = Database::new("postgres://localhost/traceguard_test").await.unwrap();
-    let app = api::create_router(db);
-
-    let sbom_content = r#"
-    {
-        "bomFormat": "CycloneDX",
-        "specVersion": "1.4",
-        "version": 1,
-        "components": [
-            {
-                "type": "library",
-                "name": "example-lib",
-                "version": "1.0.0",
-                "purl": "pkg:generic/example-lib@1.0.0"
-            }
-        ]
-    }
-    "#;
-
-    let body = Body::from(sbom_content);
-
-    let response = app
-        .oneshot(
-            Request::builder()
-                .method("POST")
-                .uri("/api/sboms")
-                .header("Authorization", "Bearer test_token")
-                .header("Content-Type", "application/json")
-                .body(body)
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-
-    assert_eq!(response.status(), StatusCode::CREATED);
 }
 
 #[tokio::test]
