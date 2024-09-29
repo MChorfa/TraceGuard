@@ -81,6 +81,6 @@ const UpdateStream: React.FC = () => {
       )}
     </div>
   );
-};
+}
 
 export default UpdateStream;

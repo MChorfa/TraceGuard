@@ -66,22 +66,22 @@ impl TraceGuardService for TraceGuardServiceImpl {
         &self,
         request: Request<ListSBOMsRequest>,
     ) -> Result<Response<ListSBOMsResponse>, Status> {
-        let _filter = request.into_inner().filter;
+        let _request = request.into_inner();
         info!("Listing SBOMs");
 
         // TODO: Implement actual SBOM listing logic
         let sboms = vec![
             SBOM {
-                id: "sbom1".to_string(),
-                name: "SBOM 1".to_string(),
+                id: "1".to_string(),
+                name: "Sample SBOM 1".to_string(),
                 version: "1.0.0".to_string(),
-                content: "Sample content".to_string(),
+                content: "Sample content 1".to_string(),
             },
             SBOM {
-                id: "sbom2".to_string(),
-                name: "SBOM 2".to_string(),
+                id: "2".to_string(),
+                name: "Sample SBOM 2".to_string(),
                 version: "2.0.0".to_string(),
-                content: "Sample content".to_string(),
+                content: "Sample content 2".to_string(),
             },
         ];
 
@@ -92,11 +92,6 @@ impl TraceGuardService for TraceGuardServiceImpl {
     }
 }
 
-pub fn create_grpc_service() -> tonic::transport::Server {
-    let trace_guard_service = TraceGuardServiceImpl::default();
-    tonic::transport::Server::builder()
-        .accept_http1(true)
-        .layer(GrpcWebLayer::new())
-        .layer(CorsLayer::permissive())
-        .add_service(TraceGuardServiceServer::new(trace_guard_service))
+pub fn create_grpc_service() -> TraceGuardServiceServer<TraceGuardServiceImpl> {
+    TraceGuardServiceServer::new(TraceGuardServiceImpl::default())
 }

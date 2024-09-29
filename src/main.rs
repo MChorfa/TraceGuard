@@ -36,142 +36,55 @@ use tracing_subscriber::FmtSubscriber;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize tracing
     let subscriber = FmtSubscriber::builder()
-        .with_max_level(Level::INFO)
+        .with_max_level(Level::DEBUG)
         .finish();
-    tracing::subscriber::set_global_default(subscriber)
-        .expect("Failed to set tracing subscriber");
+    tracing::subscriber::set_global_default(subscriber)?;
 
-    // Configure OpenTelemetry with Jaeger
+    // Initialize OpenTelemetry
     global::set_text_map_propagator(TraceContextPropagator::new());
-    let tracer = new_agent_pipeline()
-        .with_service_name("traceguard")
-        .install_simple()?;
+    let tracer = new_agent_pipeline().install_simple()?;
 
-    // Configure tracing subscriber with OpenTelemetry
+    // Create a tracing layer with the configured tracer
+    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+
+    // Use the tracing subscriber `Registry`, or any other subscriber
+    // that impls `LookupSpan`
     tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::new(
-            std::env::var("RUST_LOG").unwrap_or_else(|_| "info".into()),
-        ))
-        .with(tracing_subscriber::fmt::layer())
-        .with(OpenTelemetryLayer::new(tracer))
-        .init();
+        .with(telemetry)
+        .try_init()?;
 
-    // Set up Prometheus metrics
-    let prometheus_handle = PrometheusBuilder::new()
-        .with_endpoint("/metrics")
-        .build()
-        .expect("Failed to create Prometheus handle");
+    // Set up database connection
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let pool = PgPool::connect(&database_url).await?;
 
-    let db_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let pool = sqlx::PgPool::connect(&db_url).await.expect("Failed to connect to Postgres");
+    // Set up metrics
+    let prometheus_handle = PrometheusBuilder::new().install_recorder()?;
 
-    let grpc_service = create_grpc_service();
-
-    let app = Router::new()
-        .route("/health", get(health_check))
-        .route("/login", post(login))
-        .layer(middleware::from_fn(auth_middleware))
-        .nest("/api/v1", api_v1_router(pool.clone()))
-        .nest("/api/v2", api_v2_router(pool.clone()))
-        .route("/auth/login", post(auth::login))
-        .route("/auth/refresh", post(auth::refresh_token))
-        .route("/metrics", get(|| async move { prometheus_handle.render() }))
+    // Set up API router
+    let app = api::create_router(pool.clone())
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
-                .layer(RateLimitLayer::new(5, Duration::from_secs(1))) // 5 requests per second
-                .layer(axum::middleware::from_fn(auth::require_auth))
-                .layer(metrics::MetricsLayer::new())
-                .layer(CorsLayer::permissive())
-        );
+                .layer(RateLimitLayer::new(5, Duration::from_secs(1)))
+                .layer(middleware::from_fn(auth::auth_middleware))
+        )
+        .layer(CorsLayer::permissive());
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    info!("HTTP server listening on {}", addr);
+    // Set up gRPC server
+    let grpc_service = create_grpc_service();
 
-    let grpc_addr = SocketAddr::from(([127, 0, 0, 1], 50051));
-    info!("gRPC server listening on {}", grpc_addr);
+    // Start servers
+    let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
+    info!("Starting server on {}", addr);
 
-    tokio::spawn(async move {
-        if let Err(e) = Server::builder()
-            .accept_http1(true)
-            .add_service(grpc_service)
-            .serve(grpc_addr)
-            .await
-        {
-            error!("gRPC server error: {}", e);
-        }
-    });
-
-    if let Err(e) = axum::Server::bind(&addr)
-        .serve(app.into_make_service())
-        .await
-    {
-        error!("HTTP server error: {}", e);
-    }
+    Server::builder()
+        .accept_http1(true)
+        .add_service(tonic_web::enable(grpc_service))
+        .serve_with_shutdown(addr, async {
+            tokio::signal::ctrl_c().await.unwrap();
+            info!("Shutting down server");
+        })
+        .await?;
 
     Ok(())
-}
-
-fn api_v1_router(pool: sqlx::PgPool) -> Router {
-    Router::new()
-        .route("/sboms", get(api::v1::sbom::list_sboms).post(api::v1::sbom::create_sbom))
-        .route("/sboms/:id", get(api::v1::sbom::get_sbom))
-        .route("/provenance", get(api::v1::provenance::get_provenance_records))
-        .route("/provenance/:id", get(api::v1::provenance::get_provenance_record))
-        .with_state(pool)
-}
-
-fn api_v2_router(pool: sqlx::PgPool) -> Router {
-    Router::new()
-        .route("/sboms", get(api::v2::sbom::list_sboms).post(api::v2::sbom::create_sbom))
-        .route("/sboms/:id", get(api::v2::sbom::get_sbom))
-        .route("/provenance", get(api::v2::provenance::get_provenance_records))
-        .route("/provenance/:id", get(api::v2::provenance::get_provenance_record))
-        .with_state(pool)
-}
-
-async fn health_check() -> &'static str {
-    "OK"
-}
-
-async fn auth_middleware<B>(
-    req: Request<B>,
-    next: Next<B>,
-) -> Result<Response, StatusCode> {
-    let auth_header = req.headers()
-        .get(header::AUTHORIZATION)
-        .and_then(|header| header.to_str().ok());
-
-    match auth_header {
-        Some(auth_str) if auth_str.starts_with("Bearer ") => {
-            let token = &auth_str[7..];
-            match auth::validate_token(token) {
-                Ok(_) => Ok(next.run(req).await),
-                Err(_) => Err(StatusCode::UNAUTHORIZED),
-            }
-        }
-        _ => Err(StatusCode::UNAUTHORIZED),
-    }
-}
-
-async fn login(Json(payload): Json<LoginPayload>) -> Result<Json<LoginResponse>, StatusCode> {
-    // In a real application, you would verify the credentials against a database
-    if payload.username == "admin" && payload.password == "password" {
-        let token = auth::create_token(&payload.username)
-            .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-        Ok(Json(LoginResponse { token }))
-    } else {
-        Err(StatusCode::UNAUTHORIZED)
-    }
-}
-
-#[derive(Deserialize)]
-struct LoginPayload {
-    username: String,
-    password: String,
-}
-
-#[derive(Serialize)]
-struct LoginResponse {
-    token: String,
 }
