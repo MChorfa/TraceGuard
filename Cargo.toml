@@ -19,7 +19,7 @@ chrono = { version = "0.4", features = ["serde"] }
 jsonwebtoken = "8.1"
 argon2 = "0.4"
 tower = { version = "0.4", features = ["limit"] }
-tower-http = { version = "0.3", features = ["trace"] }
+tower-http = { version = "0.3", features = ["trace", "cors"] }
 moka = { version = "0.9", features = ["future"] }
 metrics = "0.17"
 metrics-exporter-prometheus = "0.6"
@@ -30,7 +30,6 @@ tracing-opentelemetry = "0.18"
 tonic = "0.8"
 prost = "0.11"
 tonic-web = "0.5"
-tower-http = { version = "0.4", features = ["cors"] }
 
 [workspace]
 members = ["web_ui"]

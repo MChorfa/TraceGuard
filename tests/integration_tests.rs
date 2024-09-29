@@ -3,6 +3,18 @@ use traceguard::provenance::provenance_api::{record_provenance, verify_provenanc
 use traceguard::database::Database;
 use uuid::Uuid;
 use chrono::Utc;
+use sqlx::PgPool;
+use traceguard::auth;
+use traceguard::grpc::TraceGuardServiceImpl;
+use traceguard::proto::traceguard::v1::{StreamUpdatesRequest, GetProvenanceRequest, ListSBOMsRequest};
+
+async fn setup_test_db() -> PgPool {
+    let database_url = std::env::var("DATABASE_URL")
+        .unwrap_or_else(|_| "postgres://localhost/traceguard_test".to_string());
+    let pool = PgPool::connect(&database_url).await.unwrap();
+    sqlx::migrate!("./migrations").run(&pool).await.unwrap();
+    pool
+}
 
 #[tokio::test]
 async fn test_sbom_parsing_and_storage() {
@@ -48,4 +60,50 @@ async fn test_provenance_recording_and_verification() {
     assert!(verification_result);
 
     // Add assertions to verify the provenance record was stored correctly
+}
+
+#[tokio::test]
+async fn test_auth_flow() {
+    let token = auth::create_token("testuser").unwrap();
+    let claims = auth::validate_token(&token).unwrap();
+    assert_eq!(claims.sub, "testuser");
+}
+
+#[tokio::test]
+async fn test_stream_updates() {
+    let pool = setup_test_db().await;
+    let service = TraceGuardServiceImpl::new(pool);
+    let request = tonic::Request::new(StreamUpdatesRequest {
+        user_id: "testuser".to_string(),
+    });
+    let response = service.stream_updates(request).await.unwrap();
+    let mut stream = response.into_inner();
+    let update = stream.message().await.unwrap().unwrap();
+    assert!(update.message.contains("testuser"));
+}
+
+#[tokio::test]
+async fn test_get_provenance() {
+    let pool = setup_test_db().await;
+    let service = TraceGuardServiceImpl::new(pool);
+    let request = tonic::Request::new(GetProvenanceRequest {
+        artifact_id: "test-artifact".to_string(),
+    });
+    let response = service.get_provenance(request).await.unwrap();
+    let record = response.into_inner();
+    assert_eq!(record.artifact_id, "test-artifact");
+}
+
+#[tokio::test]
+async fn test_list_sboms() {
+    let pool = setup_test_db().await;
+    let service = TraceGuardServiceImpl::new(pool);
+    let request = tonic::Request::new(ListSBOMsRequest {
+        filter: "".to_string(),
+        page_size: 10,
+        page_token: "".to_string(),
+    });
+    let response = service.list_sboms(request).await.unwrap();
+    let list_response = response.into_inner();
+    assert!(!list_response.sboms.is_empty());
 }

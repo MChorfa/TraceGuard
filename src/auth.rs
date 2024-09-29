@@ -5,9 +5,11 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
-use jsonwebtoken::{decode, DecodingKey, Validation};
+use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 use tracing::error;
+use thiserror::Error;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
@@ -69,4 +71,45 @@ impl IntoResponse for AuthError {
         }));
         (status, body).into_response()
     }
+}
+
+const JWT_SECRET: &[u8] = b"your-secret-key"; // In production, use a proper secret management system
+
+pub fn create_token(user_id: &str) -> Result<String, jsonwebtoken::errors::Error> {
+    let expiration = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs() + 3600; // Token valid for 1 hour
+
+    let claims = Claims {
+        sub: user_id.to_owned(),
+        exp: expiration as usize,
+    };
+
+    encode(
+        &Header::default(),
+        &claims,
+        &EncodingKey::from_secret(JWT_SECRET),
+    )
+}
+
+pub fn validate_token(token: &str) -> Result<Claims, AuthError> {
+    let validation = Validation::default();
+    let token_data = decode::<Claims>(
+        token,
+        &DecodingKey::from_secret(JWT_SECRET),
+        &validation,
+    )
+    .map_err(|_| AuthError::InvalidToken)?;
+
+    let current_time = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as usize;
+
+    if token_data.claims.exp < current_time {
+        return Err(AuthError::TokenExpired);
+    }
+
+    Ok(token_data.claims)
 }

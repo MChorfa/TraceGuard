@@ -1,0 +1,23 @@
+-- Add migration script here
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE sboms (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    version VARCHAR(50) NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE provenance_records (
+    id SERIAL PRIMARY KEY,
+    artifact_id VARCHAR(255) NOT NULL,
+    slsa_level INTEGER NOT NULL,
+    metadata JSONB NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
