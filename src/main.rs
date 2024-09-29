@@ -32,6 +32,8 @@ use tower_http::cors::CorsLayer;
 use tracing::{info, error, Level};
 use tracing_subscriber::FmtSubscriber;
 
+use auth::oidc::{create_oidc_providers, OIDCConfig};
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize tracing
@@ -64,4 +66,56 @@ async fn error_handling<B>(
     } else {
         Ok(response)
     }
+}
+
+let oidc_configs = vec![
+    (
+        "azure".to_string(),
+        OIDCConfig {
+            client_id: std::env::var("AZURE_CLIENT_ID").expect("AZURE_CLIENT_ID must be set"),
+            client_secret: std::env::var("AZURE_CLIENT_SECRET").expect("AZURE_CLIENT_SECRET must be set"),
+            redirect_uri: format!("{}/auth/azure/callback", std::env::var("BASE_URL").expect("BASE_URL must be set")),
+            issuer_url: "https://login.microsoftonline.com/{tenant}/v2.0".to_string(),
+        },
+    ),
+    (
+        "github".to_string(),
+        OIDCConfig {
+            client_id: std::env::var("GITHUB_CLIENT_ID").expect("GITHUB_CLIENT_ID must be set"),
+            client_secret: std::env::var("GITHUB_CLIENT_SECRET").expect("GITHUB_CLIENT_SECRET must be set"),
+            redirect_uri: format!("{}/auth/github/callback", std::env::var("BASE_URL").expect("BASE_URL must be set")),
+            issuer_url: "https://token.actions.githubusercontent.com".to_string(),
+        },
+    ),
+    (
+        "google".to_string(),
+        OIDCConfig {
+            client_id: std::env::var("GOOGLE_CLIENT_ID").expect("GOOGLE_CLIENT_ID must be set"),
+            client_secret: std::env::var("GOOGLE_CLIENT_SECRET").expect("GOOGLE_CLIENT_SECRET must be set"),
+            redirect_uri: format!("{}/auth/google/callback", std::env::var("BASE_URL").expect("BASE_URL must be set")),
+            issuer_url: "https://accounts.google.com".to_string(),
+        },
+    ),
+    (
+        "gitlab".to_string(),
+        OIDCConfig {
+            client_id: std::env::var("GITLAB_CLIENT_ID").expect("GITLAB_CLIENT_ID must be set"),
+            client_secret: std::env::var("GITLAB_CLIENT_SECRET").expect("GITLAB_CLIENT_SECRET must be set"),
+            redirect_uri: format!("{}/auth/gitlab/callback", std::env::var("BASE_URL").expect("BASE_URL must be set")),
+            issuer_url: "https://gitlab.com".to_string(),
+        },
+    ),
+];
+
+let oidc_providers = create_oidc_providers(oidc_configs);
+
+async fn create_router(
+    pool: PgPool,
+    oidc_providers: Arc<std::collections::HashMap<String, Arc<dyn OIDCAuthentication + Send + Sync>>>,
+) -> Router {
+    Router::new()
+        .route("/auth/:provider/login", get(api::oidc_login))
+        .route("/auth/:provider/callback", get(api::oidc_callback))
+        .layer(Extension(pool))
+        .layer(Extension(oidc_providers))
 }

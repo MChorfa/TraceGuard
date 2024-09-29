@@ -14,19 +14,7 @@ TraceGuard is a robust, enterprise-grade platform designed for secure, traceable
 - Web UI for SBOM and Provenance Management
 - CLI for CI/CD pipelines
 - gRPC Service for efficient communication between the backend and frontend
-- Web UI for SBOM and Provenance Management
-
-
-## gRPC Service and Web UI
-
-TraceGuard now includes a gRPC service for efficient communication between the backend and frontend. The web UI has been updated to use this service for real-time updates, SBOM management, and provenance tracking.
-
-Key features:
-- Real-time update streaming
-- SBOM listing and management
-- Provenance record retrieval
-- Compliance reporting
-
+- OpenID Connect (OIDC) Authentication
 
 ## Getting Started
 
@@ -35,6 +23,7 @@ Key features:
 - Rust 1.55 or later
 - Node.js 14 or later
 - PostgreSQL 13 or later
+- Go 1.16 or later (for CLI)
 
 ### Installation
 
@@ -55,7 +44,33 @@ Key features:
    npm install
    ```
 
-4. Start the development servers:
+4. Set up the CLI:
+   ```
+   cd cli
+   go build
+   ```
+
+5. Set up the database:
+   ```
+   psql -c "CREATE DATABASE traceguard"
+   sqlx database create
+   sqlx migrate run
+   ```
+
+6. Configure OIDC providers:
+   Create a `.env` file in the root directory and add your OIDC provider credentials:
+   ```
+   AZURE_CLIENT_ID=your_azure_client_id
+   AZURE_CLIENT_SECRET=your_azure_client_secret
+   GITHUB_CLIENT_ID=your_github_client_id
+   GITHUB_CLIENT_SECRET=your_github_client_secret
+   GOOGLE_CLIENT_ID=your_google_client_id
+   GOOGLE_CLIENT_SECRET=your_google_client_secret
+   GITLAB_CLIENT_ID=your_gitlab_client_id
+   GITLAB_CLIENT_SECRET=your_gitlab_client_secret
+   ```
+
+7. Start the development servers:
    ```
    # In one terminal
    cargo run
@@ -65,14 +80,11 @@ Key features:
    npm start
    ```
 
-## Documentation
+## Usage
 
-For more detailed information, please refer to the following documentation:
+### CLI
 
-- [API Documentation](docs/API.md)
-- [Architecture Overview](docs/ARCHITECTURE.md)
-- [Deployment Guide](docs/DEPLOYMENT.md)
-
+TraceGuard CLI provides various commands for managing SBOMs, provenance, and compliance:
 
 
 ## Contributing

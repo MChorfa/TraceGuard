@@ -1,25 +1,10 @@
 # TraceGuard API Documentation
 
-This document outlines the main API endpoints provided by TraceGuard for managing SBOMs, provenance, and compliance information.
+This document outlines the main API endpoints provided by TraceGuard for managing SBOMs, provenance, and compliance information in a cloud-agnostic, multi-tenant environment.
 
 ## Authentication
 
-### Login
-
-POST /api/auth/login
-
-Request Body:
-{
-  "username": "string",
-  "password": "string"
-}
-
-Response:
-{
-  "token": "string"
-}
-
-All API endpoints require authentication. Use the following header in your requests:
+TraceGuard uses OpenID Connect (OIDC) for authentication. After successful authentication, you'll receive a JWT token. Use this token in the Authorization header for all API requests:
 
 ## SBOM Management
 
@@ -76,3 +61,24 @@ POST /api/compliance/report
 Generates a compliance report for a specific tenant.
 
 Request Body:
+
+## Authentication
+
+TraceGuard supports OpenID Connect (OIDC) authentication with multiple providers:
+
+- Azure
+- GitHub
+- Google
+- GitLab
+
+### OIDC Login
+
+GET /auth/:provider/login
+
+Initiates the OIDC authentication flow for the specified provider.
+
+### OIDC Callback
+
+GET /auth/:provider/callback
+
+Handles the OIDC authentication callback and completes the authentication process.

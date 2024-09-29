@@ -1,11 +1,15 @@
 use axum::{
     extract::{Multipart, State},
+    http::StatusCode,
     response::IntoResponse,
     Json,
 };
 use serde::{Deserialize, Serialize};
+use serde_json::json;
+use sqlx::PgPool;
 use crate::database::Database;
 use crate::error::AppError;
+use crate::models::SBOM;
 use tracing::{info, error, instrument};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -57,31 +61,36 @@ pub async fn create_sbom(
 
 #[instrument(skip(db, multipart))]
 pub async fn upload_sbom(
-    State(db): State<Database>,
+    State(pool): State<PgPool>,
     mut multipart: Multipart,
 ) -> Result<impl IntoResponse, AppError> {
-    info!("Processing SBOM upload");
+    let mut sbom_content = String::new();
+
     while let Some(field) = multipart.next_field().await.map_err(|e| {
         error!("Error processing multipart form: {:?}", e);
-        AppError::ValidationError("Error processing upload".to_string())
+        AppError::BadRequest("Invalid form data".to_string())
     })? {
-        let name = field.name().unwrap_or("").to_string();
-        if name == "sbom" {
-            let data = field.bytes().await.map_err(|e| {
-                error!("Error reading file data: {:?}", e);
-                AppError::ValidationError("Error reading file data".to_string())
+        if field.name() == Some("file") {
+            sbom_content = field.text().await.map_err(|e| {
+                error!("Error reading file content: {:?}", e);
+                AppError::BadRequest("Invalid file content".to_string())
             })?;
-            let sbom = process_sbom_data(&data)?;
-            db.create_sbom(sbom).await.map_err(|e| {
-                error!("Failed to create SBOM in database: {:?}", e);
-                AppError::DatabaseError(e)
-            })?;
-            info!("SBOM uploaded and processed successfully");
-            return Ok(Json(json!({ "message": "SBOM uploaded successfully" })));
         }
     }
-    error!("No SBOM file found in request");
-    Err(AppError::ValidationError("No SBOM file found in request".to_string()))
+
+    if sbom_content.is_empty() {
+        return Err(AppError::BadRequest("No SBOM file provided".to_string()));
+    }
+
+    // TODO: Implement SBOM parsing and validation logic here
+
+    let new_sbom = SBOM::create(&pool, &sbom_content).await.map_err(|e| {
+        error!("Error creating SBOM in database: {:?}", e);
+        AppError::InternalServerError
+    })?;
+
+    info!("SBOM uploaded successfully: {:?}", new_sbom);
+    Ok((StatusCode::CREATED, Json(json!({ "id": new_sbom.id })))))
 }
 
 fn process_sbom_data(data: &[u8]) -> Result<SBOM, AppError> {

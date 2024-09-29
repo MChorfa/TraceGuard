@@ -18,7 +18,6 @@ func main() {
 	rootCmd.AddCommand(newSBOMCommand())
 	rootCmd.AddCommand(newProvenanceCommand())
 	rootCmd.AddCommand(newComplianceCommand())
-	rootCmd.AddCommand(newAuthCommand())
 	rootCmd.AddCommand(newAPICommand())
 
 	if err := rootCmd.Execute(); err != nil {
@@ -89,27 +88,6 @@ func newComplianceCommand() *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			fmt.Printf("Generating compliance report for system: %s\n", args[0])
 			// Add compliance report generation logic here
-		},
-	})
-
-	return cmd
-}
-
-func newAuthCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "auth",
-		Short: "Authenticate with TraceGuard",
-	}
-
-	cmd.AddCommand(&cobra.Command{
-		Use:   "login [username] [password]",
-		Short: "Log in to TraceGuard",
-		Args:  cobra.ExactArgs(2),
-		Run: func(cmd *cobra.Command, args []string) {
-			username := args[0]
-			_ = args[1] // password
-			// Implement login logic here
-			fmt.Printf("Logging in as %s\n", username)
 		},
 	})
 

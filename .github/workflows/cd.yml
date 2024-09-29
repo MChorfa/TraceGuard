@@ -3,26 +3,57 @@ name: Continuous Deployment
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
     steps:
     - uses: actions/checkout@v2
     - name: Set up Rust
       uses: actions-rs/toolchain@v1
       with:
+        profile: minimal
         toolchain: stable
-    - name: Run tests
-      run: cargo test --verbose
     - name: Set up Node.js
       uses: actions/setup-node@v2
       with:
         node-version: '14'
-    - name: Install UI dependencies
-      run: cd web_ui && npm ci
-    - name: Run UI tests
-      run: cd web_ui && npm test
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: '1.16'
+    - name: Install dependencies
+      run: |
+        cargo install sqlx-cli
+        npm install
+    - name: Run database migrations
+      run: |
+        sqlx database create
+        sqlx migrate run
+      env:
+        DATABASE_URL: postgres://postgres:postgres@localhost:5432/traceguard
+    - name: Run tests
+      run: |
+        cargo test
+        cd web_ui && npm test
+        cd ../cli && go test ./...
+      env:
+        DATABASE_URL: postgres://postgres:postgres@localhost:5432/traceguard
 
   build:
     needs: test
@@ -30,35 +61,11 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Build
-      run: cargo build --release
-    - name: Build UI
-      run: cd web_ui && npm run build
-    
-    - name: Install web UI dependencies
       run: |
-        cd web_ui
-        npm ci
-    
-    - name: Build web UI
-      run: |
-        cd web_ui
-        npm run build
-    
-    - name: Run web UI tests
-      run: |
-        cd web_ui
-        npm test
-    
-    - name: Generate gRPC TypeScript files
-      run: |
-        cd web_ui
-        npx buf generate proto
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: Deploy to production
-      run: ./deploy.sh
-      env:
-        DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+        cargo build --release
+        cd web_ui && npm run build
+        cd ../cli && go build -o traceguard
+
+    - name: Deploy
+      # Add your deployment steps here
+      run: echo "Deploying..."

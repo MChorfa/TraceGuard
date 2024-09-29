@@ -1,14 +1,8 @@
-use axum::{
-    async_trait,
-    extract::FromRequestParts,
-    http::{request::Parts, StatusCode},
-    response::{IntoResponse, Response},
-    Json,
-};
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
+use axum::Json;
+use jsonwebtoken::{decode, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
-use tracing::error;
-use thiserror::Error;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -22,36 +16,17 @@ pub struct AuthUser {
     pub user_id: String,
 }
 
-#[async_trait]
-impl<S> FromRequestParts<S> for AuthUser
-where
-    S: Send + Sync,
-{
-    type Rejection = AuthError;
+pub async fn validate_token(auth_token: &str) -> Result<AuthUser, AuthError> {
+    let token_data = decode::<Claims>(
+        auth_token,
+        &DecodingKey::from_secret("your-secret-key".as_ref()),
+        &Validation::default(),
+    )
+    .map_err(|_| AuthError::InvalidToken)?;
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
-        let auth_header = parts
-            .headers
-            .get("Authorization")
-            .ok_or(AuthError::MissingToken)?;
-
-        let auth_token = auth_header
-            .to_str()
-            .map_err(|_| AuthError::InvalidToken)?
-            .strip_prefix("Bearer ")
-            .ok_or(AuthError::InvalidToken)?;
-
-        let token_data = decode::<Claims>(
-            auth_token,
-            &DecodingKey::from_secret("your-secret-key".as_ref()),
-            &Validation::default(),
-        )
-        .map_err(|_| AuthError::InvalidToken)?;
-
-        Ok(AuthUser {
-            user_id: token_data.claims.sub,
-        })
-    }
+    Ok(AuthUser {
+        user_id: token_data.claims.sub,
+    })
 }
 
 #[derive(Debug)]
@@ -86,30 +61,9 @@ pub fn create_token(user_id: &str) -> Result<String, jsonwebtoken::errors::Error
         exp: expiration as usize,
     };
 
-    encode(
-        &Header::default(),
+    jsonwebtoken::encode(
+        &jsonwebtoken::Header::default(),
         &claims,
-        &EncodingKey::from_secret(JWT_SECRET),
+        &jsonwebtoken::EncodingKey::from_secret(JWT_SECRET),
     )
-}
-
-pub fn validate_token(token: &str) -> Result<Claims, AuthError> {
-    let validation = Validation::default();
-    let token_data = decode::<Claims>(
-        token,
-        &DecodingKey::from_secret(JWT_SECRET),
-        &validation,
-    )
-    .map_err(|_| AuthError::InvalidToken)?;
-
-    let current_time = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_secs() as usize;
-
-    if token_data.claims.exp < current_time {
-        return Err(AuthError::TokenExpired);
-    }
-
-    Ok(token_data.claims)
 }

@@ -4,35 +4,25 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tokio = { version = "1.19", features = ["full"] }
-axum = "0.5"
+axum = { version = "0.5", features = ["headers", "multipart"] }
+tokio = { version = "1", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-sqlx = { version = "0.6", features = ["runtime-tokio-rustls", "postgres", "chrono"] }
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-opentelemetry = { version = "0.18", features = ["rt-tokio"] }
-opentelemetry-jaeger = { version = "0.17", features = ["rt-tokio"] }
-clap = "3.2"
+sqlx = { version = "0.6", features = ["runtime-tokio-native-tls", "postgres", "chrono", "uuid", "json"] }
 thiserror = "1.0"
-chrono = { version = "0.4", features = ["serde"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
+tower-http = { version = "0.3", features = ["trace"] }
 jsonwebtoken = "8.1"
-argon2 = "0.4"
-tower = { version = "0.4", features = ["limit"] }
-tower-http = { version = "0.3", features = ["trace", "cors"] }
-moka = { version = "0.9", features = ["future"] }
-metrics = "0.17"
-metrics-exporter-prometheus = "0.6"
-flaggy = "0.2"
-tokio-tungstenite = "0.17"
-futures-util = "0.3"
-tracing-opentelemetry = "0.18"
+bcrypt = "0.10"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
 tonic = "0.8"
 prost = "0.11"
-tonic-web = "0.5"
-argon2 = "0.4"
-jsonwebtoken = "8.1"
-
+openidconnect = "2.4"
+reqwest = { version = "0.11", features = ["json"] }
+async-trait = "0.1"
+dotenv = "0.15"
 
 [workspace]
 members = ["web_ui"]
