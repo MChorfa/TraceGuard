@@ -19,6 +19,7 @@ func main() {
 	rootCmd.AddCommand(newProvenanceCommand())
 	rootCmd.AddCommand(newComplianceCommand())
 	rootCmd.AddCommand(newAuthCommand())
+	rootCmd.AddCommand(newAPICommand())
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
@@ -106,9 +107,37 @@ func newAuthCommand() *cobra.Command {
 		Args:  cobra.ExactArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			username := args[0]
-			password := args[1]
+			_ = args[1] // password
 			// Implement login logic here
 			fmt.Printf("Logging in as %s\n", username)
+		},
+	})
+
+	return cmd
+}
+
+func newAPICommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "api",
+		Short: "Interact with TraceGuard API",
+	}
+
+	cmd.AddCommand(&cobra.Command{
+		Use:   "list-sboms",
+		Short: "List all SBOMs",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println("Listing all SBOMs...")
+			// Implement API call to list SBOMs
+		},
+	})
+
+	cmd.AddCommand(&cobra.Command{
+		Use:   "get-provenance [artifact-id]",
+		Short: "Get provenance for an artifact",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Printf("Getting provenance for artifact: %s\n", args[0])
+			// Implement API call to get provenance
 		},
 	})
 

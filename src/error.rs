@@ -12,26 +12,17 @@ pub enum AppError {
     #[error("Database error: {0}")]
     DatabaseError(#[from] sqlx::Error),
 
-    #[error("Validation error: {0}")]
-    ValidationError(String),
+    #[error("Not found")]
+    NotFound,
 
-    #[error("Authentication error: {0}")]
-    AuthenticationError(String),
+    #[error("Unauthorized")]
+    Unauthorized,
 
-    #[error("Authorization error: {0}")]
-    AuthorizationError(String),
-
-    #[error("Not found: {0}")]
-    NotFoundError(String),
-
-    #[error("Rate limit exceeded")]
-    RateLimitExceeded,
+    #[error("Bad request: {0}")]
+    BadRequest(String),
 
     #[error("Internal server error")]
     InternalServerError,
-
-    #[error("External service error: {0}")]
-    ExternalServiceError(String),
 }
 
 impl IntoResponse for AppError {
@@ -41,16 +32,10 @@ impl IntoResponse for AppError {
                 error!("Database error: {:?}", e);
                 (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error")
             }
-            AppError::ValidationError(ref message) => (StatusCode::BAD_REQUEST, message),
-            AppError::AuthenticationError(ref message) => (StatusCode::UNAUTHORIZED, message),
-            AppError::AuthorizationError(ref message) => (StatusCode::FORBIDDEN, message),
-            AppError::NotFoundError(ref message) => (StatusCode::NOT_FOUND, message),
-            AppError::RateLimitExceeded => (StatusCode::TOO_MANY_REQUESTS, "Rate limit exceeded"),
+            AppError::NotFound => (StatusCode::NOT_FOUND, "Not found"),
+            AppError::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized"),
+            AppError::BadRequest(ref message) => (StatusCode::BAD_REQUEST, message),
             AppError::InternalServerError => (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error"),
-            AppError::ExternalServiceError(ref message) => {
-                error!("External service error: {}", message);
-                (StatusCode::BAD_GATEWAY, "External service error")
-            }
         };
 
         let body = Json(json!({

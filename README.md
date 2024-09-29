@@ -13,6 +13,20 @@ TraceGuard is a robust, enterprise-grade platform designed for secure, traceable
 - Observability (OpenTelemetry)
 - Web UI for SBOM and Provenance Management
 - CLI for CI/CD pipelines
+- gRPC Service for efficient communication between the backend and frontend
+- Web UI for SBOM and Provenance Management
+
+
+## gRPC Service and Web UI
+
+TraceGuard now includes a gRPC service for efficient communication between the backend and frontend. The web UI has been updated to use this service for real-time updates, SBOM management, and provenance tracking.
+
+Key features:
+- Real-time update streaming
+- SBOM listing and management
+- Provenance record retrieval
+- Compliance reporting
+
 
 ## Getting Started
 
@@ -58,6 +72,8 @@ For more detailed information, please refer to the following documentation:
 - [API Documentation](docs/API.md)
 - [Architecture Overview](docs/ARCHITECTURE.md)
 - [Deployment Guide](docs/DEPLOYMENT.md)
+
+
 
 ## Contributing
 

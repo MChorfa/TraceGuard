@@ -35,56 +35,33 @@ use tracing_subscriber::FmtSubscriber;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize tracing
-    let subscriber = FmtSubscriber::builder()
-        .with_max_level(Level::DEBUG)
-        .finish();
-    tracing::subscriber::set_global_default(subscriber)?;
+    tracing_subscriber::fmt::init();
 
-    // Initialize OpenTelemetry
-    global::set_text_map_propagator(TraceContextPropagator::new());
-    let tracer = new_agent_pipeline().install_simple()?;
+    let app = Router::new()
+        .route("/api/sboms", get(api::list_sboms).post(api::create_sbom))
+        .route("/api/sboms/:id", get(api::get_sbom))
+        .route("/api/provenance/:artifact_id", get(api::get_provenance))
+        .layer(TraceLayer::new_for_http())
+        .layer(middleware::from_fn(error_handling));
 
-    // Create a tracing layer with the configured tracer
-    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
-
-    // Use the tracing subscriber `Registry`, or any other subscriber
-    // that impls `LookupSpan`
-    tracing_subscriber::registry()
-        .with(telemetry)
-        .try_init()?;
-
-    // Set up database connection
-    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let pool = PgPool::connect(&database_url).await?;
-
-    // Set up metrics
-    let prometheus_handle = PrometheusBuilder::new().install_recorder()?;
-
-    // Set up API router
-    let app = api::create_router(pool.clone())
-        .layer(
-            ServiceBuilder::new()
-                .layer(TraceLayer::new_for_http())
-                .layer(RateLimitLayer::new(5, Duration::from_secs(1)))
-                .layer(middleware::from_fn(auth::auth_middleware))
-        )
-        .layer(CorsLayer::permissive());
-
-    // Set up gRPC server
-    let grpc_service = create_grpc_service();
-
-    // Start servers
-    let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
-    info!("Starting server on {}", addr);
-
-    Server::builder()
-        .accept_http1(true)
-        .add_service(tonic_web::enable(grpc_service))
-        .serve_with_shutdown(addr, async {
-            tokio::signal::ctrl_c().await.unwrap();
-            info!("Shutting down server");
-        })
+    let addr = "127.0.0.1:3000".parse()?;
+    info!("Listening on {}", addr);
+    axum::Server::bind(&addr)
+        .serve(app.into_make_service())
         .await?;
 
     Ok(())
+}
+
+async fn error_handling<B>(
+    req: axum::http::Request<B>,
+    next: axum::middleware::Next<B>,
+) -> Result<axum::response::Response, error::AppError> {
+    let response = next.run(req).await;
+    if response.status().is_server_error() {
+        error!("Server error: {:?}", response);
+        Err(error::AppError::InternalServerError)
+    } else {
+        Ok(response)
+    }
 }

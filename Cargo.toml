@@ -30,6 +30,9 @@ tracing-opentelemetry = "0.18"
 tonic = "0.8"
 prost = "0.11"
 tonic-web = "0.5"
+argon2 = "0.4"
+jsonwebtoken = "8.1"
+
 
 [workspace]
 members = ["web_ui"]

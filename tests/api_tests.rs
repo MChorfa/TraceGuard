@@ -8,6 +8,7 @@ use sqlx::PgPool;
 use tower::ServiceExt;
 use traceguard::{api, database::Database};
 use crate::error::AppError;
+use traceguard::models::SBOM;
 
 #[tokio::test]
 async fn test_register_user() {
@@ -311,6 +312,46 @@ async fn test_get_provenance_record(pool: PgPool) -> Result<(), AppError> {
     assert_eq!(record["slsa_level"], 3);
 
     Ok(())
+}
+
+#[tokio::test]
+async fn test_list_sboms() {
+    let app = Router::new().route("/api/sboms", get(api::list_sboms));
+
+    let response = app
+        .oneshot(Request::builder().uri("/api/sboms").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    // Add more assertions based on the expected response
+}
+
+#[tokio::test]
+async fn test_create_sbom() {
+    let app = Router::new().route("/api/sboms", post(api::create_sbom));
+
+    let sbom = SBOM {
+        id: None,
+        name: "Test SBOM".to_string(),
+        version: "1.0.0".to_string(),
+        content: "Test content".to_string(),
+    };
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/sboms")
+                .header("Content-Type", "application/json")
+                .body(Body::from(serde_json::to_string(&sbom).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::CREATED);
+    // Add more assertions based on the expected response
 }
 
 // Add more tests for other endpoints

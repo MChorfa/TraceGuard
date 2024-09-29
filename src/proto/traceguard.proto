@@ -3,6 +3,16 @@ package traceguard;
 
 service TraceGuard {
   rpc StreamUpdates (StreamUpdatesRequest) returns (stream Update);
+  rpc ListSBOMs (ListSBOMsRequest) returns (ListSBOMsResponse);
+  rpc GetProvenance (GetProvenanceRequest) returns (GetProvenanceResponse);
+  rpc GetSBOM (GetSBOMRequest) returns (GetSBOMResponse);
+  rpc GetSBOMs (GetSBOMsRequest) returns (GetSBOMsResponse);
+  rpc GetSBOMsByArtifactID (GetSBOMsByArtifactIDRequest) returns (GetSBOMsByArtifactIDResponse);
+  rpc GetSBOMsByUserID (GetSBOMsByUserIDRequest) returns (GetSBOMsByUserIDResponse);
+  rpc GetSBOMsByArtifactIDAndUserID (GetSBOMsByArtifactIDAndUserIDRequest) returns (GetSBOMsByArtifactIDAndUserIDResponse);
+  rpc GetSBOMsByArtifactIDAndUserIDAndVersion (GetSBOMsByArtifactIDAndUserIDAndVersionRequest) returns (GetSBOMsByArtifactIDAndUserIDAndVersionResponse);
+  rpc GetSBOMsByArtifactIDAndUserIDAndVersionAndName (GetSBOMsByArtifactIDAndUserIDAndVersionAndNameRequest) returns (GetSBOMsByArtifactIDAndUserIDAndVersionAndNameResponse);  
+
 }
 
 message StreamUpdatesRequest {
@@ -12,3 +22,94 @@ message StreamUpdatesRequest {
 message Update {
   string message = 1;
 }
+
+message ProvenanceRecord {
+  string artifact_id = 1;
+  string slsa_level = 2;
+  string metadata = 3;
+}
+
+message SBOM {
+  string id = 1;
+  string name = 2;
+  string version = 3;
+}
+
+message ListSBOMsRequest {
+  string user_id = 1;
+}
+
+message ListSBOMsResponse {
+  repeated SBOM sboms = 1;
+}
+
+message GetProvenanceRequest {
+  string artifact_id = 1;
+}
+
+message GetProvenanceResponse {
+  ProvenanceRecord provenance = 1;
+}
+
+message GetSBOMRequest {
+  string artifact_id = 1;
+}
+
+message GetSBOMResponse {
+  SBOM sbom = 1;
+}
+
+message GetSBOMsRequest {
+  string user_id = 1;
+}
+
+message GetSBOMsResponse {
+  repeated SBOM sboms = 1;
+}
+
+message GetSBOMsByArtifactIDRequest {
+  string artifact_id = 1;
+}
+
+message GetSBOMsByArtifactIDResponse {
+  repeated SBOM sboms = 1;
+}
+
+message GetSBOMsByUserIDRequest {
+  string user_id = 1;
+}
+
+message    {
+  repeated SBOM sboms = 1;
+}
+
+message GetSBOMsByArtifactIDAndUserIDRequest {
+  string artifact_id = 1;
+  string user_id = 2;
+}
+
+message GetSBOMsByArtifactIDAndUserIDResponse {
+  repeated SBOM sboms = 1;
+}
+
+message GetSBOMsByArtifactIDAndUserIDAndVersionRequest {
+  string artifact_id = 1;
+  string user_id = 2;
+  string version = 3;
+}
+
+message GetSBOMsByArtifactIDAndUserIDAndVersionResponse {
+  repeated SBOM sboms = 1;
+}
+
+message GetSBOMsByArtifactIDAndUserIDAndVersionAndNameRequest {
+  string artifact_id = 1;
+  string user_id = 2;
+  string version = 3;
+  string name = 4;
+}
+
+message GetSBOMsByArtifactIDAndUserIDAndVersionAndNameResponse {
+  repeated SBOM sboms = 1;
+}
+

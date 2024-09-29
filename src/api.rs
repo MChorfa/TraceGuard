@@ -1,9 +1,10 @@
 use axum::{
-    extract::{Extension, Path},
+    extract::{Extension, Path, Query},
     http::StatusCode,
     response::IntoResponse,
     Json,
 };
+use serde::Deserialize;
 use sqlx::PgPool;
 use tracing::{error, info};
 
@@ -32,13 +33,45 @@ pub async fn get_sbom(
     }
 }
 
+#[derive(Deserialize)]
+pub struct ListSBOMsQuery {
+    page: Option<u32>,
+    per_page: Option<u32>,
+}
+
+pub async fn list_sboms(
+    Query(params): Query<ListSBOMsQuery>,
+    Extension(pool): Extension<PgPool>,
+) -> Result<impl IntoResponse, AppError> {
+    info!("Listing SBOMs");
+    let page = params.page.unwrap_or(1);
+    let per_page = params.per_page.unwrap_or(10);
+    let offset = (page - 1) * per_page;
+
+    let sboms = sqlx::query_as!(
+        SBOM,
+        "SELECT * FROM sboms ORDER BY id LIMIT $1 OFFSET $2",
+        per_page as i64,
+        offset as i64
+    )
+    .fetch_all(&pool)
+    .await
+    .map_err(|e| {
+        error!("Database error when listing SBOMs: {:?}", e);
+        AppError::DatabaseError(e)
+    })?;
+
+    Ok((StatusCode::OK, Json(sboms)))
+}
+
 pub async fn create_sbom(
     Json(sbom): Json<SBOM>,
     Extension(pool): Extension<PgPool>,
 ) -> Result<impl IntoResponse, AppError> {
     info!("Creating new SBOM");
-    let result = sqlx::query!(
-        "INSERT INTO sboms (name, version, content) VALUES ($1, $2, $3) RETURNING id",
+    let new_sbom = sqlx::query_as!(
+        SBOM,
+        "INSERT INTO sboms (name, version, content) VALUES ($1, $2, $3) RETURNING *",
         sbom.name,
         sbom.version,
         sbom.content
@@ -50,7 +83,7 @@ pub async fn create_sbom(
         AppError::DatabaseError(e)
     })?;
 
-    Ok((StatusCode::CREATED, Json(result.id)))
+    Ok((StatusCode::CREATED, Json(new_sbom)))
 }
 
 pub async fn get_provenance(

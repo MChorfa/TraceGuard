@@ -4,6 +4,21 @@ This document outlines the main API endpoints provided by TraceGuard for managin
 
 ## Authentication
 
+### Login
+
+POST /api/auth/login
+
+Request Body:
+{
+  "username": "string",
+  "password": "string"
+}
+
+Response:
+{
+  "token": "string"
+}
+
 All API endpoints require authentication. Use the following header in your requests:
 
 ## SBOM Management

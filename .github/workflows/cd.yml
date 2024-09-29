@@ -33,7 +33,26 @@ jobs:
       run: cargo build --release
     - name: Build UI
       run: cd web_ui && npm run build
-
+    
+    - name: Install web UI dependencies
+      run: |
+        cd web_ui
+        npm ci
+    
+    - name: Build web UI
+      run: |
+        cd web_ui
+        npm run build
+    
+    - name: Run web UI tests
+      run: |
+        cd web_ui
+        npm test
+    
+    - name: Generate gRPC TypeScript files
+      run: |
+        cd web_ui
+        npx buf generate proto
   deploy:
     needs: build
     runs-on: ubuntu-latest
