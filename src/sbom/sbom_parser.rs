@@ -1,80 +1,50 @@
 use serde::{Deserialize, Serialize};
-use std::fs::File;
-use std::io::Read;
 use thiserror::Error;
 
-#[derive(Error, Debug)]
-pub enum SBOMError {
-    #[error("IO error: {0}")]
-    IOError(#[from] std::io::Error),
-    #[error("JSON parsing error: {0}")]
-    JSONError(#[from] serde_json::Error),
-    #[error("Unsupported SBOM format")]
-    UnsupportedFormat,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SBOM {
     pub format: String,
     pub version: String,
     pub components: Vec<Component>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Component {
     pub name: String,
     pub version: String,
     pub purl: Option<String>,
-    #[serde(rename = "type")]
-    pub component_type: String,
 }
 
-pub fn parse_sbom(file_path: &str) -> Result<SBOM, SBOMError> {
-    let mut file = File::open(file_path)?;
-    let mut contents = String::new();
-    file.read_to_string(&mut contents)?;
-    
-    let sbom: SBOM = match determine_format(&contents) {
-        "CycloneDX" => parse_cyclonedx(&contents)?,
-        "SPDX" => parse_spdx(&contents)?,
-        "SWID" => parse_swid(&contents)?,
-        "SLSA" => parse_slsa(&contents)?,
-        _ => return Err(SBOMError::UnsupportedFormat),
-    };
-    
-    Ok(sbom)
+#[derive(Error, Debug)]
+pub enum SBOMError {
+    #[error("Failed to parse SBOM: {0}")]
+    ParseError(String),
+    #[error("Unsupported SBOM format: {0}")]
+    UnsupportedFormat(String),
 }
 
-fn determine_format(contents: &str) -> &str {
+pub fn parse_sbom(contents: &str) -> Result<SBOM, SBOMError> {
     if contents.contains("CycloneDX") {
-        "CycloneDX"
+        parse_cyclonedx(contents)
     } else if contents.contains("SPDX") {
-        "SPDX"
+        parse_spdx(contents)
     } else if contents.contains("SWID") {
-        "SWID"
-    } else if contents.contains("SLSA") {
-        "SLSA"
+        parse_swid(contents)
     } else {
-        "Unknown"
+        Err(SBOMError::UnsupportedFormat("Unknown format".to_string()))
     }
 }
 
 fn parse_cyclonedx(contents: &str) -> Result<SBOM, SBOMError> {
-    // Implement CycloneDX parsing logic
-    serde_json::from_str(contents).map_err(SBOMError::from)
+    serde_json::from_str(contents).map_err(|e| SBOMError::ParseError(e.to_string()))
 }
 
 fn parse_spdx(contents: &str) -> Result<SBOM, SBOMError> {
     // Implement SPDX parsing logic
-    serde_json::from_str(contents).map_err(SBOMError::from)
+    unimplemented!("SPDX parsing not yet implemented")
 }
 
 fn parse_swid(contents: &str) -> Result<SBOM, SBOMError> {
     // Implement SWID parsing logic
-    serde_json::from_str(contents).map_err(SBOMError::from)
-}
-
-fn parse_slsa(contents: &str) -> Result<SBOM, SBOMError> {
-    // Implement SLSA parsing logic
-    serde_json::from_str(contents).map_err(SBOMError::from)
+    unimplemented!("SWID parsing not yet implemented")
 }

@@ -18,11 +18,15 @@ async-trait = "0.1"
 thiserror = "1.0"
 anyhow = "1.0"
 reqwest = { version = "0.11", features = ["json"] }
-sqlx = { version = "0.6", features = ["postgres", "runtime-tokio-native-tls"] }
+sqlx = { version = "0.6", features = ["postgres", "runtime-tokio-native-tls", "chrono", "uuid"] }
 azure_storage_blobs = "0.10"
 apache-iceberg = "0.1"
 sigstore = "0.6"
 opa = "0.5"
+clap = "3.0"
+
+[workspace]
+members = ["web_ui"]
 
 [dev-dependencies]
 mockall = "0.11"

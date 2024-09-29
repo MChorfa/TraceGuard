@@ -1,0 +1,7 @@
+CREATE TABLE sboms (
+    id SERIAL PRIMARY KEY,
+    format VARCHAR(50) NOT NULL,
+    version VARCHAR(50) NOT NULL,
+    components JSONB NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);

@@ -34,13 +34,28 @@ func build(ctx context.Context) error {
 	// define build steps
 	rust := client.Container().
 		From("rust:latest").
-		WithMountedCache("/usr/local/cargo/registry", cache).
+		WithMountedCache("/usr/local/cargo/registry", client.CacheVolume("cargo-cache")).
 		WithDirectory("/app", src).
 		WithWorkdir("/app").
 		WithExec([]string{"cargo", "build", "--release"})
 
-	// execute
-	_, err = rust.Stdout(ctx)
+	// Go CLI build
+	golang := client.Container().
+		From("golang:1.20").
+		WithDirectory("/src", src).
+		WithWorkdir("/src/cli").
+		WithExec([]string{"go", "build", "-o", "traceguard", "."})
 
-	return err
+	// Execute both builds
+	_, err = rust.Stdout(ctx)
+	if err != nil {
+		return err
+	}
+
+	_, err = golang.Stdout(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

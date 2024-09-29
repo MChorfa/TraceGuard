@@ -1,10 +1,11 @@
 use async_trait::async_trait;
 use serde_json::Value;
 use std::collections::HashMap;
+use anyhow::{Result, anyhow};
 
 #[async_trait]
 pub trait Plugin: Send + Sync {
-    async fn execute(&self, params: &Value) -> Result<Value, Box<dyn std::error::Error>>;
+    async fn execute(&self, params: &Value) -> Result<Value>;
 }
 
 pub struct PluginManager {
@@ -20,8 +21,8 @@ impl PluginManager {
         Self { plugins }
     }
 
-    pub async fn execute_plugin(&self, name: &str, params: &Value) -> Result<Value, Box<dyn std::error::Error>> {
-        let plugin = self.plugins.get(name).ok_or("Plugin not found")?;
+    pub async fn execute_plugin(&self, name: &str, params: &Value) -> Result<Value> {
+        let plugin = self.plugins.get(name).ok_or_else(|| anyhow!("Plugin not found"))?;
         plugin.execute(params).await
     }
 }
@@ -32,7 +33,7 @@ struct ChainloopPlugin;
 
 #[async_trait]
 impl Plugin for GuacPlugin {
-    async fn execute(&self, params: &Value) -> Result<Value, Box<dyn std::error::Error>> {
+    async fn execute(&self, params: &Value) -> Result<Value> {
         // Implement GUAC integration logic
         Ok(serde_json::json!({"status": "analysis_complete"}))
     }
@@ -40,7 +41,7 @@ impl Plugin for GuacPlugin {
 
 #[async_trait]
 impl Plugin for DojoPlugin {
-    async fn execute(&self, params: &Value) -> Result<Value, Box<dyn std::error::Error>> {
+    async fn execute(&self, params: &Value) -> Result<Value> {
         // Implement DojoEffect integration logic
         Ok(serde_json::json!({"status": "incident_response_initiated"}))
     }
@@ -48,7 +49,7 @@ impl Plugin for DojoPlugin {
 
 #[async_trait]
 impl Plugin for ChainloopPlugin {
-    async fn execute(&self, params: &Value) -> Result<Value, Box<dyn std::error::Error>> {
+    async fn execute(&self, params: &Value) -> Result<Value> {
         // Implement Chainloop integration logic
         Ok(serde_json::json!({"status": "attestation_verified"}))
     }

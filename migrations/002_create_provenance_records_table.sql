@@ -1,0 +1,8 @@
+CREATE TABLE provenance_records (
+    id UUID PRIMARY KEY,
+    artifact_id VARCHAR(255) NOT NULL,
+    timestamp TIMESTAMP WITH TIME ZONE NOT NULL,
+    slsa_level SMALLINT NOT NULL,
+    metadata JSONB NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);

@@ -1,56 +1,52 @@
-# **TraceGuard**
+# TraceGuard
 
-**TraceGuard** is a robust, enterprise-grade platform designed for secure, traceable, and compliant management of Software Bill of Materials (SBOMs), AI models, and data pipelines. Built with a focus on supply chain security and provenance, TraceGuard integrates with modern standards like **SLSA** and handles multiple SBOM formats, including **CycloneDX**, **SPDX**, and **SWID Tags**.
+TraceGuard is a robust, enterprise-grade platform designed for secure, traceable, and compliant management of Software Bill of Materials (SBOMs), AI models, and data pipelines.
 
-## **Key Features**
-- **Multi-SBOM Support**: Parse and validate **CycloneDX**, **SPDX**, and **SWID** formats.
-- **SLSA Provenance**: Integrates **SLSA levels** for software attestation and end-to-end traceability.
-- **Provenance API**: Tracks the full lifecycle of software, data, and AI models.
-- **Compliance**: Automatically generates **OSCAL** artifacts and enforces policies via **OPA**.
-- **Multi-Tenancy**: Secure isolation of tenant data and resources.
-- **Flexible Deployment**: Support for cloud, on-premises, and off-grid environments.
-- **Observability**: Comprehensive monitoring and logging with OpenTelemetry.
+## Features
 
-## **Tech Stack**
-- **Rust**: Core system logic and SBOM parsing.
-- **Go**: Dagger CI/CD automation using Go SDK.
-- **WebAssembly (Wasm)**: For efficient cross-platform execution.
-- **Kubernetes**: For orchestration and scaling.
-- **Apache Iceberg**: For efficient metadata management.
-- **Sigstore**: Cryptographic signing and verification.
-- **OpenTelemetry**: For observability and monitoring.
+- Multi-SBOM Support (CycloneDX, SPDX, SWID)
+- SLSA Provenance
+- Provenance API
+- Compliance (OSCAL, OPA)
+- Multi-Tenancy
+- Flexible Deployment
+- Observability (OpenTelemetry)
+- Web UI for SBOM and Provenance Management
 
-## **Getting Started**
+## Project Structure
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/MChorfa/TraceGuard.git
-   cd TraceGuard
+## Getting Started
+
+1. Clone the repository
+2. Set up the database:
+   ```
+   psql -d your_database_name -f migrations/001_create_sboms_table.sql
+   psql -d your_database_name -f migrations/002_create_provenance_records_table.sql
+   ```
+3. Set the `DATABASE_URL` environment variable
+4. Run the backend:
+   ```
+   cargo run
+   ```
+5. Run the web UI:
+   ```
+   cd web_ui && npm start
    ```
 
-2. Run the initialization script to set up the project structure:
-   ```bash
-   ./scripts/traceguard_init.sh
-   ```
+## Development
 
-3. Build the project:
-   ```bash
-   cargo build --release
-   ```
+- Run tests: `cargo test`
+- Format code: `cargo fmt`
+- Lint code: `cargo clippy`
 
-4. Run tests:
-   ```bash
-   cargo test
-   ```
+## Deployment
 
-5. For deployment options, refer to the [Deployment Guide](./docs/DEPLOYMENT.md).
+The project uses GitHub Actions for continuous integration and deployment. See `.github/workflows/cd.yml` for details.
 
-## **Documentation**
-Full documentation can be found in the [docs](./docs/README.md) folder, including architecture diagrams, configuration files, and deployment instructions.
+## Contributing
 
-## **Contribution**
-We welcome contributions! Please read the [CONTRIBUTING.md](./CONTRIBUTING.md) to get started.
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
 
-## **License**
+## License
 
-This project is licensed under the **Apache License 2.0**. See the [LICENSE](./LICENSE) file for details.
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
