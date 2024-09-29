@@ -34,3 +34,14 @@ down:
 # Clean up
 clean:
 	cargo clean
+
+.PHONY: buf-lint buf-generate buf-breaking
+
+buf-lint:
+	cd proto && buf lint
+
+buf-generate:
+	cd proto && buf generate
+
+buf-breaking:
+	cd proto && buf breaking --against '.git#branch=main'

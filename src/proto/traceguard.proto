@@ -1,0 +1,14 @@
+syntax = "proto3";
+package traceguard;
+
+service TraceGuard {
+  rpc StreamUpdates (StreamUpdatesRequest) returns (stream Update);
+}
+
+message StreamUpdatesRequest {
+  string user_id = 1;
+}
+
+message Update {
+  string message = 1;
+}

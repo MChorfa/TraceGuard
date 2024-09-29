@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package traceguard.v1;
+
+import "google/api/annotations.proto";
+
+service TraceGuardService {
+  rpc StreamUpdates (StreamUpdatesRequest) returns (stream Update) {
+    option (google.api.http) = {
+      get: "/v1/updates"
+    };
+  }
+  rpc GetProvenance (GetProvenanceRequest) returns (ProvenanceRecord) {
+    option (google.api.http) = {
+      get: "/v1/provenance/{artifact_id}"
+    };
+  }
+  rpc ListSBOMs (ListSBOMsRequest) returns (ListSBOMsResponse) {
+    option (google.api.http) = {
+      get: "/v1/sboms"
+    };
+  }
+}
+
+message StreamUpdatesRequest {
+  string user_id = 1;
+}
+
+message Update {
+  string message = 1;
+}
+
+message GetProvenanceRequest {
+  string artifact_id = 1;
+}
+
+message ProvenanceRecord {
+  string artifact_id = 1;
+  int32 slsa_level = 2;
+  string metadata = 3;
+}
+
+message ListSBOMsRequest {
+  string filter = 1;
+  int32 page_size = 2;
+  string page_token = 3;
+}
+
+message ListSBOMsResponse {
+  repeated SBOM sboms = 1;
+  string next_page_token = 2;
+}
+
+message SBOM {
+  string id = 1;
+  string name = 2;
+  string version = 3;
+  string content = 4;
+}
