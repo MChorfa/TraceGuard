@@ -4,39 +4,44 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use crate::database::Database;
-use thiserror::Error;
+use crate::error::AppError;
+use tracing::{info, error, instrument};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ProvenanceRecord {
-    id: String,
+    id: i32,
     artifact_id: String,
-    slsa_level: u8,
+    slsa_level: i32,
     metadata: serde_json::Value,
 }
 
-#[derive(Debug, Error)]
-pub enum ProvenanceError {
-    #[error("Database error: {0}")]
-    DatabaseError(#[from] sqlx::Error),
-    #[error("Invalid provenance data: {0}")]
-    ValidationError(String),
-}
-
+#[instrument(skip(db))]
 pub async fn list_provenance_records(
     State(db): State<Database>,
-) -> Result<Json<Vec<ProvenanceRecord>>, ProvenanceError> {
-    let records = db.fetch_provenance_records().await?;
+) -> Result<Json<Vec<ProvenanceRecord>>, AppError> {
+    info!("Fetching list of provenance records");
+    let records = db.fetch_provenance_records().await.map_err(|e| {
+        error!("Failed to fetch provenance records: {:?}", e);
+        AppError::DatabaseError(e)
+    })?;
     Ok(Json(records))
 }
 
+#[instrument(skip(db, record))]
 pub async fn create_provenance_record(
     State(db): State<Database>,
     Json(record): Json<ProvenanceRecord>,
-) -> Result<Json<ProvenanceRecord>, ProvenanceError> {
+) -> Result<Json<ProvenanceRecord>, AppError> {
+    info!("Creating new provenance record");
     if record.artifact_id.is_empty() || record.slsa_level == 0 {
-        return Err(ProvenanceError::ValidationError("Invalid provenance data".to_string()));
+        error!("Invalid provenance data provided");
+        return Err(AppError::ValidationError("Invalid provenance data".to_string()));
     }
 
-    let created_record = db.create_provenance_record(record).await?;
+    let created_record = db.create_provenance_record(record).await.map_err(|e| {
+        error!("Failed to create provenance record: {:?}", e);
+        AppError::DatabaseError(e)
+    })?;
+    info!("Provenance record created successfully");
     Ok(Json(created_record))
 }

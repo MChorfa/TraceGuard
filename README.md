@@ -14,35 +14,50 @@ TraceGuard is a robust, enterprise-grade platform designed for secure, traceable
 - Web UI for SBOM and Provenance Management
 - CLI for CI/CD pipelines
 
-## Project Structure
-
 ## Getting Started
 
-1. Clone the repository
-2. Set up the database:
+### Prerequisites
+
+- Rust 1.55 or later
+- Node.js 14 or later
+- PostgreSQL 13 or later
+
+### Installation
+
+1. Clone the repository:
    ```
-   psql -d your_database_name -f migrations/001_create_sboms_table.sql
-   psql -d your_database_name -f migrations/002_create_provenance_records_table.sql
+   git clone https://github.com/your-org/traceguard.git
+   cd traceguard
    ```
-3. Set the `DATABASE_URL` environment variable
-4. Run the backend:
+
+2. Set up the backend:
    ```
+   cargo build
+   ```
+
+3. Set up the frontend:
+   ```
+   cd web_ui
+   npm install
+   ```
+
+4. Start the development servers:
+   ```
+   # In one terminal
    cargo run
+
+   # In another terminal
+   cd web_ui
+   npm start
    ```
-5. Run the web UI:
-   ```
-   cd web_ui && npm start
-   ```
 
-## Development
+## Documentation
 
-- Run tests: `cargo test`
-- Format code: `cargo fmt`
-- Lint code: `cargo clippy`
+For more detailed information, please refer to the following documentation:
 
-## Deployment
-
-The project uses GitHub Actions for continuous integration and deployment. See `.github/workflows/cd.yml` for details.
+- [API Documentation](docs/API.md)
+- [Architecture Overview](docs/ARCHITECTURE.md)
+- [Deployment Guide](docs/DEPLOYMENT.md)
 
 ## Contributing
 

@@ -33,3 +33,29 @@ POST /api/sboms
 Create a new SBOM.
 
 Request Body:
+
+## Provenance Endpoints
+
+### List Provenance Records
+
+GET /api/provenance
+
+Returns a list of all provenance records in the system.
+
+### Create Provenance Record
+
+POST /api/provenance
+
+Create a new provenance record.
+
+Request Body:
+
+## Compliance Endpoints
+
+### Generate Compliance Report
+
+POST /api/compliance/report
+
+Generates a compliance report for a specific tenant.
+
+Request Body:

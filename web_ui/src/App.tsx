@@ -1,38 +1,40 @@
-import React, { useState, useEffect } from 'react';
-import { AppBar, Toolbar, Typography, Container } from '@material-ui/core';
-import axios from 'axios';
-import Auth from './Auth';
-import Dashboard from './Dashboard';
+import React from 'react';
+import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
+import { ThemeProvider, createTheme } from '@material-ui/core/styles';
+import CssBaseline from '@material-ui/core/CssBaseline';
+import Dashboard from './components/Dashboard';
+import SBOMUploader from './components/SBOMUploader';
+import ProvenanceViewer from './components/ProvenanceViewer';
+import ComplianceReporter from './components/ComplianceReporter';
 
-function App() {
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#00152b',
+    },
+    secondary: {
+      main: '#38a3a5',
+    },
+  },
+  typography: {
+    fontFamily: 'Roboto, Arial, sans-serif',
+  },
+});
 
-  useEffect(() => {
-    if (token) {
-      localStorage.setItem('token', token);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-    } else {
-      localStorage.removeItem('token');
-      delete axios.defaults.headers.common['Authorization'];
-    }
-  }, [token]);
-
+const App: React.FC = () => {
   return (
-    <div>
-      <AppBar position="static">
-        <Toolbar>
-          <Typography variant="h6">TraceGuard Dashboard</Typography>
-        </Toolbar>
-      </AppBar>
-      <Container>
-        {token ? (
-          <Dashboard setToken={setToken} />
-        ) : (
-          <Auth setToken={setToken} />
-        )}
-      </Container>
-    </div>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Router>
+        <Switch>
+          <Route exact path="/" component={Dashboard} />
+          <Route path="/upload-sbom" component={SBOMUploader} />
+          <Route path="/provenance" component={ProvenanceViewer} />
+          <Route path="/compliance" component={ComplianceReporter} />
+        </Switch>
+      </Router>
+    </ThemeProvider>
   );
-}
+};
 
 export default App;
