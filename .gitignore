@@ -23,3 +23,6 @@ Cargo.lock
 # Buf generated files
 /proto/gen
 /web_ui/src/gen
+
+# Node modules
+node_modules
