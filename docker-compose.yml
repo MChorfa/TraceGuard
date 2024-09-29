@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  traceguard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: traceguard-app
+    ports:
+      - "8080:8080"
+    environment:
+      - RUST_LOG=info
+    volumes:
+      - .:/usr/src/traceguard
+    depends_on:
+      - postgres
+      - vault
+
+  postgres:
+    image: postgres:13
+    container_name: traceguard-db
+    environment:
+      POSTGRES_USER: traceguard
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: traceguard
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  vault:
+    image: vault:1.9.0
+    container_name: traceguard-vault
+    cap_add:
+      - IPC_LOCK
+    ports:
+      - "8200:8200"
+    environment:
+      - VAULT_DEV_ROOT_TOKEN_ID=${VAULT_DEV_ROOT_TOKEN_ID}
+    volumes:
+      - vault_data:/vault/data
+
+volumes:
+  postgres_data:
+  vault_data:

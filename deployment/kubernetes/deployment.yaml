@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traceguard
+  labels:
+    app: traceguard
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: traceguard
+  template:
+    metadata:
+      labels:
+        app: traceguard
+    spec:
+      containers:
+      - name: traceguard
+        image: ghcr.io/mchorfa/traceguard:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: RUST_LOG
+          value: "info"

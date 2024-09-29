@@ -2,7 +2,7 @@
 
 # Create core directories
 mkdir -p src/sbom src/provenance src/data src/models src/compliance src/security
-mkdir dagger cli tests docs config
+mkdir -p dagger cli tests docs config
 
 # Create core Rust source files
 touch src/sbom/sbom_parser.rs
@@ -26,8 +26,31 @@ touch docs/README.md
 touch docs/architecture_diagram.puml
 touch config/dagger_pipeline.go
 touch config/porter_bundle.yml
-touch config/openpolicy.rego
+touch config/sbom_policy.rego
+
+# Create Cargo.toml
+touch Cargo.toml
+
+# Create Go mod file
+touch go.mod
 
 # Print directory structure
 echo "Project structure initialized:"
 tree .
+
+# Initialize Go module
+go mod init github.com/MChorfa/TraceGuard
+
+# Install Go dependencies
+go get dagger.io/dagger
+go get github.com/spf13/cobra
+
+echo "Go dependencies installed"
+
+# Initialize Rust project
+cargo init --bin
+
+echo "Rust project initialized"
+
+# Print final message
+echo "TraceGuard project initialized successfully!"

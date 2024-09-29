@@ -1,0 +1,29 @@
+name: traceguard
+version: 0.1.0
+description: "TraceGuard: Secure SBOM and Provenance Management"
+registry: ghcr.io/mchorfa
+
+mixins:
+  - exec
+  - kubernetes
+
+install:
+  - kubernetes:
+      description: "Deploy TraceGuard to Kubernetes"
+      manifests:
+        - deployment/kubernetes/deployment.yaml
+        - deployment/kubernetes/service.yaml
+
+uninstall:
+  - kubernetes:
+      description: "Remove TraceGuard from Kubernetes"
+      manifests:
+        - deployment/kubernetes/deployment.yaml
+        - deployment/kubernetes/service.yaml
+
+upgrade:
+  - kubernetes:
+      description: "Upgrade TraceGuard in Kubernetes"
+      manifests:
+        - deployment/kubernetes/deployment.yaml
+        - deployment/kubernetes/service.yaml
