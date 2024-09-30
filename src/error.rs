@@ -9,35 +9,33 @@ use tracing::error;
 
 #[derive(Error, Debug)]
 pub enum AppError {
-    #[error("Bad Request: {0}")]
-    BadRequest(String),
-    #[error("Unauthorized")]
-    Unauthorized,
-    #[error("Not Found")]
-    NotFound,
-    #[error("Internal Server Error")]
-    InternalServerError,
-    #[error("Database Error: {0}")]
+    #[error("Database error: {0}")]
     DatabaseError(#[from] sqlx::Error),
+
+    #[error("Authentication error: {0}")]
+    AuthError(String),
+
+    #[error("Validation error: {0}")]
+    ValidationError(String),
+
+    #[error("Not found: {0}")]
+    NotFound(String),
+
+    #[error("Internal server error")]
+    InternalServerError,
 }
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         let (status, error_message) = match self {
-            AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
-            AppError::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized".to_string()),
-            AppError::NotFound => (StatusCode::NOT_FOUND, "Not Found".to_string()),
-            AppError::InternalServerError => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Internal Server Error".to_string(),
-            ),
             AppError::DatabaseError(e) => {
                 error!("Database error: {:?}", e);
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Internal Server Error".to_string(),
-                )
+                (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error")
             }
+            AppError::AuthError(e) => (StatusCode::UNAUTHORIZED, &e),
+            AppError::ValidationError(e) => (StatusCode::BAD_REQUEST, &e),
+            AppError::NotFound(e) => (StatusCode::NOT_FOUND, &e),
+            AppError::InternalServerError => (StatusCode::INTERNAL_SERVER_ERROR, "Internal server error"),
         };
 
         let body = Json(json!({

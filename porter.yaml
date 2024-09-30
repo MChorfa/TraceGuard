@@ -1,0 +1,37 @@
+name: traceguard
+version: 0.1.0
+description: "TraceGuard deployment bundle"
+
+mixins:
+  - exec
+  - kubernetes
+  - helm3
+
+credentials:
+  - name: kubeconfig
+    path: /home/.kube/config
+
+parameters:
+  - name: vault_version
+    type: string
+    default: "1.8.2"
+
+install:
+  - helm3:
+      name: vault
+      chart: hashicorp/vault
+      version: "{{ bundle.parameters.vault_version }}"
+      namespace: vault
+      replace: true
+      set:
+        server.dev.enabled: true
+
+uninstall:
+  - helm3:
+      purge: true
+      releases:
+        - vault
+
+status:
+  - helm3:
+      name: vault

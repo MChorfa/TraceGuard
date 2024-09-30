@@ -1,70 +1,40 @@
-use crate::metadata::iceberg::IcebergMetadata;
-use crate::storage::blob_storage::BlobStorage;
-use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use crate::storage::blob_storage::{BlobStorage, Metadata, ObjectInfo};
+use crate::error::AppError;
+use chrono::{DateTime, Utc, Duration};
 use uuid::Uuid;
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct LifecyclePolicy {
-    pub id: Uuid,
-    pub tenant_id: Uuid,
-    pub artifact_type: String,
-    pub retention_period: chrono::Duration,
-    pub archive_after: Option<chrono::Duration>,
-    pub delete_after: Option<chrono::Duration>,
+pub struct LifecycleManager<S: BlobStorage> {
+    storage: S,
 }
 
-pub struct LifecycleManager {
-    metadata: IcebergMetadata,
-    storage: BlobStorage,
-}
-
-impl LifecycleManager {
-    pub fn new(metadata: IcebergMetadata, storage: BlobStorage) -> Self {
-        Self { metadata, storage }
+impl<S: BlobStorage> LifecycleManager<S> {
+    pub fn new(storage: S) -> Self {
+        Self { storage }
     }
 
-    pub async fn apply_lifecycle_policy(&self, policy: &LifecyclePolicy) -> Result<(), Box<dyn std::error::Error>> {
-        let artifacts = self.metadata.get_artifacts_by_type(&policy.tenant_id, &policy.artifact_type)?;
+    pub async fn apply_lifecycle_policy(&self, bucket: &str, tenant_id: Uuid) -> Result<(), AppError> {
+        let objects = self.storage.list_objects(bucket, Some(&tenant_id.to_string())).await?;
+        for object in objects {
+            self.process_object(bucket, &object).await?;
+        }
+        Ok(())
+    }
 
-        for artifact in artifacts {
-            let age = Utc::now() - artifact.created_at;
-
-            if let Some(delete_after) = policy.delete_after {
-                if age > delete_after {
-                    self.delete_artifact(&artifact).await?;
-                    continue;
-                }
-            }
-
-            if let Some(archive_after) = policy.archive_after {
-                if age > archive_after {
-                    self.archive_artifact(&artifact).await?;
-                    continue;
-                }
-            }
-
-            if age > policy.retention_period {
-                // Implement retention logic (e.g., mark as expired but don't delete)
-                self.mark_artifact_expired(&artifact).await?;
+    async fn process_object(&self, bucket: &str, object: &ObjectInfo) -> Result<(), AppError> {
+        let now = Utc::now();
+        if let Some(expires_at) = object.metadata.expires_at {
+            if now > expires_at {
+                self.storage.delete_object(bucket, &object.key).await?;
             }
         }
-
+        // Implement other lifecycle rules (e.g., archiving) here
         Ok(())
     }
 
-    async fn delete_artifact(&self, artifact: &Artifact) -> Result<(), Box<dyn std::error::Error>> {
-        // Implement deletion logic
-        Ok(())
-    }
-
-    async fn archive_artifact(&self, artifact: &Artifact) -> Result<(), Box<dyn std::error::Error>> {
-        // Implement archiving logic
-        Ok(())
-    }
-
-    async fn mark_artifact_expired(&self, artifact: &Artifact) -> Result<(), Box<dyn std::error::Error>> {
-        // Implement expiration marking logic
+    pub async fn set_expiration(&self, bucket: &str, key: &str, duration: Duration) -> Result<(), AppError> {
+        let (_, mut metadata) = self.storage.get_object(bucket, key).await?;
+        metadata.expires_at = Some(Utc::now() + duration);
+        self.storage.update_metadata(bucket, key, metadata).await?;
         Ok(())
     }
 }

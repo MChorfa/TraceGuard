@@ -73,3 +73,33 @@ pub async fn get_provenance_record(
 }
 
 // Update other functions to use AppState instead of PgPool
+
+pub async fn create_provenance(
+    State(storage): State<impl BlobStorage>,
+    State(auth): State<impl Authorization>,
+    State(encryptor): State<Encryptor>,
+    Json(provenance): Json<ProvenanceRecord>,
+    claims: Claims,
+) -> Result<impl IntoResponse, AppError> {
+    let tenant_id = claims.tenant_id;
+    let object_key = format!("provenance/{}/{}", tenant_id, Uuid::new_v4());
+
+    // Check authorization
+    if !auth.is_allowed(&claims.sub, "provenance", "create").await {
+        return Err(AppError::Unauthorized);
+    }
+
+    // Encrypt provenance content
+    let encrypted_content = encryptor.encrypt(&serde_json::to_vec(&provenance)?)?;
+
+    // Store encrypted provenance in blob storage
+    let metadata = Metadata {
+        tenant_id: tenant_id.clone(),
+        artifact_type: "Provenance".to_string(),
+        created_at: Utc::now(),
+        expires_at: None,
+    };
+    storage.put_object("provenance", &object_key, encrypted_content, Some(metadata)).await?;
+
+    Ok((StatusCode::CREATED, Json(json!({ "id": object_key }))))
+}

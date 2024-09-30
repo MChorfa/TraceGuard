@@ -75,17 +75,49 @@ For off-grid deployments, we use Porter to package TraceGuard as a bundle.
 
 2. Install the bundle:
    ```bash
-   porter install --credential-set azure
+   porter install --credential-set kubernetes
    ```
 
-## Monitoring and Observability
+This will deploy TraceGuard along with HashiCorp Vault for secret management.
 
-TraceGuard uses OpenTelemetry for observability. To set up monitoring:
+## Post-deployment steps
 
-1. Deploy Prometheus and Grafana in your cluster.
-2. Configure TraceGuard to send metrics to Prometheus.
-3. Import the provided Grafana dashboards for TraceGuard monitoring.
+1. Initialize Vault:
+   ```bash
+   kubectl exec -it vault-0 -- vault operator init
+   ```
 
-## Scaling
+2. Unseal Vault:
+   ```bash
+   kubectl exec -it vault-0 -- vault operator unseal
+   ```
 
-TraceGuard can be scaled horizontally by adjusting the number of replicas in the Kubernetes deployment:
+3. Configure Vault for TraceGuard:
+   ```bash
+   kubectl exec -it vault-0 -- /bin/sh
+   vault login
+   vault secrets enable -path=secret kv-v2
+   vault policy write traceguard-policy -<<EOF
+   path "secret/data/traceguard/*" {
+     capabilities = ["create", "read", "update", "delete", "list"]
+   }
+   EOF
+   vault token create -policy=traceguard-policy
+   ```
+
+   Save the generated token for use in TraceGuard configuration.
+
+## Updating TraceGuard
+
+To update TraceGuard, modify the `porter.yaml` file and run:
+
+```bash
+porter upgrade --credential-set kubernetes
+```
+
+## Uninstalling TraceGuard
+
+To uninstall TraceGuard and its components:
+```bash
+porter uninstall --credential-set kubernetes
+```

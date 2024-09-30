@@ -58,17 +58,7 @@ TraceGuard is a robust, enterprise-grade platform designed for secure, traceable
    ```
 
 6. Configure OIDC providers:
-   Create a `.env` file in the root directory and add your OIDC provider credentials:
-   ```
-   AZURE_CLIENT_ID=your_azure_client_id
-   AZURE_CLIENT_SECRET=your_azure_client_secret
-   GITHUB_CLIENT_ID=your_github_client_id
-   GITHUB_CLIENT_SECRET=your_github_client_secret
-   GOOGLE_CLIENT_ID=your_google_client_id
-   GOOGLE_CLIENT_SECRET=your_google_client_secret
-   GITLAB_CLIENT_ID=your_gitlab_client_id
-   GITLAB_CLIENT_SECRET=your_gitlab_client_secret
-   ```
+   Create a `.env` file in the root directory and add your OIDC provider credentials.
 
 7. Start the development servers:
    ```
@@ -82,10 +72,7 @@ TraceGuard is a robust, enterprise-grade platform designed for secure, traceable
 
 ## Usage
 
-### CLI
-
-TraceGuard CLI provides various commands for managing SBOMs, provenance, and compliance:
-
+Refer to the `docs/API.md` file for detailed API documentation and usage instructions.
 
 ## Contributing
 

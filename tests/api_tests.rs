@@ -9,6 +9,7 @@ use tower::ServiceExt;
 use traceguard::{api, database::Database};
 use crate::error::AppError;
 use traceguard::models::SBOM;
+use traceguard::compliance::ComplianceManager;
 
 #[tokio::test]
 async fn test_register_user() {
@@ -183,9 +184,8 @@ async fn test_list_sboms() {
 
 #[tokio::test]
 async fn test_generate_compliance_report() {
-    let db = Database::new("postgres://localhost/traceguard_test").await.unwrap();
-    let compliance_manager = ComplianceManager::new(Catalog::default());
-    let app = api::create_router(db, compliance_manager);
+    let compliance_manager = ComplianceManager::new(/* mock catalog */);
+    let app = api::create_router().layer(axum::Extension(compliance_manager));
 
     let response = app
         .oneshot(
@@ -193,9 +193,7 @@ async fn test_generate_compliance_report() {
                 .method("POST")
                 .uri("/api/compliance/report")
                 .header("Content-Type", "application/json")
-                .body(Body::from(json!({
-                    "tenant_id": "test-tenant"
-                }).to_string()))
+                .body(Body::from(r#"{"tenant_id": "test-tenant"}"#))
                 .unwrap(),
         )
         .await
@@ -204,12 +202,10 @@ async fn test_generate_compliance_report() {
     assert_eq!(response.status(), StatusCode::OK);
 
     let body = hyper::body::to_bytes(response.into_body()).await.unwrap();
-    let report: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
 
-    assert!(report.get("id").is_some());
-    assert_eq!(report["report_type"], "OSCAL");
-    assert!(report["content"].is_string());
-    assert!(report["generated_at"].is_string());
+    assert!(json.get("report_id").is_some());
+    assert!(json.get("content").is_some());
 }
 
 #[tokio::test]

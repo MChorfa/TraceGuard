@@ -1,6 +1,8 @@
 use axum::{
     extract::State,
     Json,
+    http::StatusCode,
+    response::IntoResponse,
 };
 use serde::{Deserialize, Serialize};
 use crate::database::Database;
@@ -43,4 +45,24 @@ pub async fn generate_compliance_report(
 
     info!("Compliance report generated successfully for tenant: {}", request.tenant_id);
     Ok(Json(report))
+}
+
+pub async fn generate_compliance_report(
+    Json(payload): Json<GenerateReportRequest>,
+    compliance_manager: axum::extract::Extension<ComplianceManager>,
+) -> Result<impl IntoResponse, AppError> {
+    let report = compliance_manager.generate_oscal_report(&payload.tenant_id).await?;
+    
+    let response = GenerateReportResponse {
+        report_id: report.id().to_string(),
+        content: serde_json::to_string(&report)?,
+    };
+
+    Ok((StatusCode::OK, Json(response)))
+}
+
+#[derive(Serialize)]
+pub struct GenerateReportResponse {
+    report_id: String,
+    content: String,
 }

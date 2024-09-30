@@ -17,26 +17,15 @@ const UpdateStream: React.FC = () => {
 
   useEffect(() => {
     const fetchUpdates = async () => {
-      const stream = client.streamUpdates({ userId: 'user123' });
-
-      try {
-        for await (const update of stream) {
-          setUpdates((prevUpdates) => [...prevUpdates, update.message]);
-        }
-      } catch (err) {
-        console.error('Error:', err);
-      } finally {
-        console.log('Stream ended');
+      const stream = client.streamUpdates({ userId: "current-user-id" });
+      for await (const update of stream) {
+        setUpdates(prev => [...prev, update.message]);
       }
     };
 
     const fetchSBOMs = async () => {
-      try {
-        const response = await client.listSBOMs({});
-        setSboms(response.sboms);
-      } catch (err) {
-        console.error('Error fetching SBOMs:', err);
-      }
+      const response = await client.listSBOMs({});
+      setSboms(response.sboms);
     };
 
     fetchUpdates();
@@ -47,14 +36,14 @@ const UpdateStream: React.FC = () => {
     try {
       const response = await client.getProvenance({ artifactId });
       setProvenance(response);
-    } catch (err) {
-      console.error('Error fetching provenance:', err);
+    } catch (error) {
+      console.error("Error fetching provenance:", error);
     }
   };
 
   return (
-    <div>
-      <h2>Updates</h2>
+    <div className="update-stream">
+      <h2>Real-time Updates</h2>
       <ul>
         {updates.map((update, index) => (
           <li key={index}>{update}</li>
@@ -73,14 +62,13 @@ const UpdateStream: React.FC = () => {
 
       {provenance && (
         <div>
-          <h2>Provenance</h2>
-          <p>Artifact ID: {provenance.artifactId}</p>
+          <h3>Provenance for {provenance.artifactId}</h3>
           <p>SLSA Level: {provenance.slsaLevel}</p>
-          <p>Metadata: {provenance.metadata}</p>
+          <pre>{JSON.stringify(JSON.parse(provenance.metadata), null, 2)}</pre>
         </div>
       )}
     </div>
   );
-}
+};
 
 export default UpdateStream;
