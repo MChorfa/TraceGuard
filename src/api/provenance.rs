@@ -103,3 +103,61 @@ pub async fn create_provenance(
 
     Ok((StatusCode::CREATED, Json(json!({ "id": object_key }))))
 }
+
+pub async fn create_provenance(
+    State(db): State<Database>,
+    Json(provenance): Json<ProvenanceRecord>,
+) -> Result<Json<ProvenanceRecord>> {
+    let created_provenance = db.create_provenance(provenance).await?;
+    Ok(Json(created_provenance))
+}
+
+pub async fn get_provenance(
+    State(db): State<Database>,
+    Path(id): Path<String>,
+) -> Result<Json<ProvenanceRecord>> {
+    let provenance = db.get_provenance(&id).await?;
+    Ok(Json(provenance))
+}
+
+pub async fn update_provenance(
+    State(db): State<Database>,
+    Path(id): Path<String>,
+    Json(provenance): Json<ProvenanceRecord>,
+) -> Result<Json<ProvenanceRecord>> {
+    let updated_provenance = db.update_provenance(&id, provenance).await?;
+    Ok(Json(updated_provenance))
+}
+
+pub async fn delete_provenance(
+    State(db): State<Database>,
+    Path(id): Path<String>,
+) -> Result<()> {
+    db.delete_provenance(&id).await?;
+    Ok(())
+}
+
+pub async fn list_provenance(
+    State(db): State<Database>,
+) -> Result<Json<Vec<ProvenanceRecord>>> {
+    let provenance_records = db.list_provenance().await?;
+    Ok(Json(provenance_records))
+}
+
+pub async fn create_slsa_provenance(
+    State(db): State<Database>,
+    Json(slsa_provenance): Json<SLSAProvenance>,
+) -> Result<Json<ProvenanceRecord>> {
+    let provenance_record = ProvenanceRecord::from_slsa(slsa_provenance);
+    let created_provenance = db.create_provenance(provenance_record).await?;
+    Ok(Json(created_provenance))
+}
+
+pub async fn verify_slsa_provenance(
+    State(db): State<Database>,
+    Path(id): Path<String>,
+) -> Result<Json<bool>> {
+    let provenance = db.get_provenance(&id).await?;
+    let is_valid = provenance.verify_slsa();
+    Ok(Json(is_valid))
+}

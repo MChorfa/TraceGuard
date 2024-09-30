@@ -1,3 +1,14 @@
+use tonic::transport::Server;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use opentelemetry::global;
+use opentelemetry::sdk::trace::Tracer;
+use opentelemetry::sdk::trace::Config;
+use opentelemetry::sdk::Resource;
+use opentelemetry::KeyValue;
+use tracing_subscriber::Registry;
+use axum::http::{HeaderValue, Method};
+use tower_http::cors::CorsLayer;
+
 mod api;
 mod config;
 mod database;
@@ -6,81 +17,55 @@ mod grpc;
 mod security;
 mod storage;
 
-use crate::api::create_router;
-use crate::config::Settings;
-use crate::database::Database;
-use crate::storage::blob_storage::MinioStorage;
-use crate::security::authorization::CasbinAuthorization;
-use crate::security::secret_management::VaultSecretManager;
-use crate::security::key_rotation::KeyRotationManager;
-use crate::grpc::create_grpc_service;
-
-use std::net::SocketAddr;
-use tonic::transport::Server;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Load configuration
-    let settings = Settings::new()?;
+    // Initialize OpenTelemetry
+    let tracer = opentelemetry_jaeger::new_pipeline()
+        .with_service_name("traceguard")
+        .with_trace_config(Config::default().with_resource(Resource::new(vec![
+            KeyValue::new("service.name", "traceguard"),
+            KeyValue::new("service.version", env!("CARGO_PKG_VERSION")),
+        ])))
+        .install_batch(opentelemetry::runtime::Tokio)?;
 
-    // Initialize tracing
-    tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::new(
-            std::env::var("RUST_LOG").unwrap_or_else(|_| "info".into()),
-        ))
-        .with(tracing_subscriber::fmt::layer())
-        .init();
+    // Create a tracing layer with the configured tracer
+    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
 
-    // Initialize database connection
-    let db = Database::new(&settings.database_url).await?;
+    // Use the tracing subscriber `Registry`, or any other subscriber
+    // that impls `LookupSpan`
+    let subscriber = Registry::default()
+        .with(telemetry)
+        .with(tracing_subscriber::EnvFilter::new("info"));
 
-    // Initialize MinIO storage
-    let storage = MinioStorage::new(
+    // Set the subscriber as the global default
+    tracing::subscriber::set_global_default(subscriber)?;
+
+    let settings = config::Settings::new()?;
+    let db = database::Database::connect(&settings.database_url).await?;
+    let storage = storage::blob_storage::MinioStorage::new(
         &settings.minio_endpoint,
         &settings.minio_access_key,
         &settings.minio_secret_key,
         settings.minio_use_ssl,
-    );
+    ).await?;
 
-    // Initialize authorization
-    let auth = CasbinAuthorization::new("path/to/model.conf", "path/to/policy.csv").await?;
+    let grpc_service = grpc::create_grpc_service(db.clone(), storage.clone());
 
-    // Initialize secret management
-    let secret_manager = VaultSecretManager::new("http://localhost:8200", "vault_token")?;
+    let addr = format!("{}:{}", settings.server_host, settings.server_port).parse()?;
+    println!("gRPC server listening on {}", addr);
 
-    // Initialize key rotation manager
-    let key_rotation_manager = KeyRotationManager::new(secret_manager.clone());
+    let cors = CorsLayer::new()
+        .allow_origin("http://localhost:3000".parse::<HeaderValue>().unwrap())
+        .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
+        .allow_headers(vec![axum::http::header::AUTHORIZATION, axum::http::header::CONTENT_TYPE]);
 
-    // Create the HTTP router
-    let app = create_router(
-        db.clone(),
-        storage.clone(),
-        auth,
-        secret_manager.clone(),
-        key_rotation_manager,
-    );
+    Server::builder()
+        .add_service(grpc::proto::trace_guard_service_server::TraceGuardServiceServer::new(grpc_service))
+        .serve(addr)
+        .await?;
 
-    // Create the gRPC service
-    let grpc_service = create_grpc_service(db, storage);
-
-    // Start the HTTP server
-    let http_server = axum::Server::bind(&SocketAddr::new(
-        settings.server_host.parse()?,
-        settings.server_port,
-    ))
-    .serve(app.into_make_service());
-
-    // Start the gRPC server
-    let grpc_server = Server::builder()
-        .add_service(grpc_service)
-        .serve("[::1]:50051".parse()?);
-
-    // Run both servers concurrently
-    tokio::select! {
-        _ = http_server => println!("HTTP server terminated"),
-        _ = grpc_server => println!("gRPC server terminated"),
-    }
+    // Ensure all spans have been reported
+    global::shutdown_tracer_provider();
 
     Ok(())
 }

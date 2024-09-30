@@ -45,3 +45,26 @@ impl IntoResponse for AppError {
         (status, body).into_response()
     }
 }
+
+#[derive(Error, Debug)]
+pub enum TraceGuardError {
+    #[error("Database error: {0}")]
+    DatabaseError(#[from] sqlx::Error),
+
+    #[error("Storage error: {0}")]
+    StorageError(String),
+
+    #[error("Authentication error: {0}")]
+    AuthError(String),
+
+    #[error("Validation error: {0}")]
+    ValidationError(String),
+
+    #[error("Not found: {0}")]
+    NotFoundError(String),
+
+    #[error("Internal server error: {0}")]
+    InternalServerError(String),
+}
+
+pub type Result<T> = std::result::Result<T, TraceGuardError>;

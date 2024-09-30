@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import { createSBOM } from '../services/grpcClient';
 
 const SBOMUploader: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -19,16 +19,10 @@ const SBOMUploader: React.FC = () => {
     }
 
     setUploading(true);
-    const formData = new FormData();
-    formData.append('sbom', file);
-
     try {
-      const response = await axios.post('/api/sboms', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
-      setMessage(`SBOM uploaded successfully. ID: ${response.data.id}`);
+      const content = await file.text();
+      const sbomId = await createSBOM(file.name, '1.0', 'json', content);
+      setMessage(`SBOM uploaded successfully. ID: ${sbomId}`);
     } catch (error) {
       setMessage('Error uploading SBOM. Please try again.');
       console.error('Error uploading SBOM:', error);

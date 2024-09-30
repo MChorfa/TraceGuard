@@ -10,9 +10,88 @@ TraceGuard uses OpenID Connect (OIDC) for authentication. After successful authe
 
 ### Upload SBOM
 
+json
+{
+"name": "example-sbom",
+"version": "1.0",
+"format": "CycloneDX",
+"content": "{ ... SBOM content ... }"
+}
+
+### List SBOMs
+
+GET /api/sboms
+
+Returns a list of all SBOMs in the system.
+
+### Get SBOM
+
+GET /api/sboms/{sbom_id}
+
+Retrieve a specific SBOM by its ID.
+
+## Provenance Management
+
+### Create Provenance Record
+
+POST /api/provenance
+
+Create a new provenance record.
+
+Request Body:
+
+json
+{
+"artifact_id": "example-artifact",
+"slsa_level": 2,
+"metadata": { ... additional metadata ... }
+}
+
+### Verify Provenance
+
+GET /api/provenance/verify/{artifact_id}
+
+Verify the provenance of a specific artifact.
+
+## Compliance Reporting
+
+### Generate Compliance Report
+
+POST /api/compliance/report
+
+Generate a compliance report for a specific SBOM.
+
+Request Body:
+json
+{
+"tenant_id": "example-tenant",
+"sbom_id": "example-sbom-id",
+"framework": "NIST-800-53"
+}
+
+
+### Get Compliance Report
+
+GET /api/compliance/report/{report_id}
+
+Retrieve a specific compliance report by its ID.
+
+
 ## CLI Usage
 
+
 TraceGuard provides a command-line interface for common operations.
+
+
+### Upload SBOM
+traceguard-cli upload-sbom <file_path>
+
+### Create Provenance Record
+traceguard-cli create-provenance <artifact_id> <slsa_level>
+
+### Generate Compliance Report
+traceguard-cli generate-compliance-report <tenant_id> <sbom_id> <framework>
+
 
 ### SBOM Operations
 

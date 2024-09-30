@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Multipart, State},
+    extract::{Multipart, Path, State},
     http::StatusCode,
     Json,
 };
@@ -8,6 +8,8 @@ use uuid::Uuid;
 use crate::database::Database;
 use crate::storage::blob_storage::BlobStorage;
 use crate::error::AppError;
+use crate::error::Result;
+use crate::models::SBOM;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SBOM {
@@ -54,16 +56,36 @@ pub async fn create_sbom<S: BlobStorage>(
     Ok(Json(sbom))
 }
 
+pub async fn get_sbom(
+    State(db): State<Database>,
+    Path(id): Path<String>,
+) -> Result<Json<SBOM>, AppError> {
+    let sbom = db.get_sbom(&id).await?;
+    Ok(Json(sbom))
+}
+
+pub async fn update_sbom(
+    State(db): State<Database>,
+    Path(id): Path<String>,
+    Json(sbom): Json<SBOM>,
+) -> Result<Json<SBOM>, AppError> {
+    let updated_sbom = db.update_sbom(&id, sbom).await?;
+    Ok(Json(updated_sbom))
+}
+
+pub async fn delete_sbom(
+    State(db): State<Database>,
+    Path(id): Path<String>,
+) -> Result<(), AppError> {
+    db.delete_sbom(&id).await?;
+    Ok(())
+}
+
 pub async fn list_sboms(
     State(db): State<Database>,
-    Query(params): Query<ListSBOMsParams>,
-) -> Result<Json<ListSBOMsResponse>, AppError> {
-    let page = params.page.unwrap_or(1);
-    let page_size = params.page_size.unwrap_or(10);
-
-    let (sboms, total) = db.list_sboms(page, page_size).await?;
-
-    Ok(Json(ListSBOMsResponse { sboms, total }))
+) -> Result<Json<Vec<SBOM>>, AppError> {
+    let sboms = db.list_sboms().await?;
+    Ok(Json(sboms))
 }
 
 #[derive(Debug, Deserialize)]

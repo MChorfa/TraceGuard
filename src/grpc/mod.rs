@@ -1,4 +1,5 @@
 use tonic::{Request, Response, Status};
+use tracing::{info, error, instrument};
 use crate::api::{sbom, provenance, compliance};
 use crate::database::Database;
 use crate::storage::blob_storage::BlobStorage;
@@ -23,30 +24,37 @@ pub struct TraceGuardGrpcService<S: BlobStorage> {
 
 #[tonic::async_trait]
 impl<S: BlobStorage + Send + Sync + 'static> TraceGuardService for TraceGuardGrpcService<S> {
+    #[instrument(skip(self, request))]
     async fn create_sbom(
         &self,
         request: Request<CreateSbomRequest>,
     ) -> Result<Response<CreateSbomResponse>, Status> {
-        let sbom = request.into_inner().sbom.unwrap();
-        let result = sbom::create_sbom(self.db.clone(), self.storage.clone(), sbom).await
-            .map_err(|e| Status::internal(e.to_string()))?;
-        Ok(Response::new(CreateSbomResponse { id: result.id }))
+        let req = request.into_inner();
+        info!("Received CreateSBOM request: {:?}", req);
+        let result = sbom::create_sbom(self.db.clone(), self.storage.clone(), req.into()).await
+            .map_err(|e| {
+                error!("Error creating SBOM: {:?}", e);
+                Status::internal(e.to_string())
+            })?;
+        Ok(Response::new(result.into()))
     }
 
+    #[instrument(skip(self, request))]
     async fn list_sboms(
         &self,
         request: Request<ListSbomsRequest>,
     ) -> Result<Response<ListSbomsResponse>, Status> {
         let req = request.into_inner();
+        info!("Received ListSBOMs request: {:?}", req);
         let result = sbom::list_sboms(self.db.clone(), req.page, req.page_size).await
-            .map_err(|e| Status::internal(e.to_string()))?;
-        Ok(Response::new(ListSbomsResponse {
-            sboms: result.sboms,
-            total: result.total,
-        }))
+            .map_err(|e| {
+                error!("Error listing SBOMs: {:?}", e);
+                Status::internal(e.to_string())
+            })?;
+        Ok(Response::new(result.into()))
     }
 
-    // Implement other methods (create_provenance_record, list_provenance_records, generate_compliance_report)...
+    // Implement other methods (create_provenance_record, list_provenance_records, generate_compliance_report) with similar tracing...
 }
 
 pub fn create_grpc_service<S: BlobStorage + Clone + Send + Sync + 'static>(

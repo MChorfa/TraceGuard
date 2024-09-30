@@ -4,34 +4,25 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-axum = { version = "0.6", features = ["multipart", "headers"] }
-tokio = { version = "1", features = ["full"] }
+tokio = { version = "1.0", features = ["full"] }
+axum = "0.6"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-sqlx = { version = "0.6", features = ["runtime-tokio-rustls", "postgres", "chrono", "uuid"] }
-uuid = { version = "1.0", features = ["serde", "v4"] }
-chrono = { version = "0.4", features = ["serde"] }
+sqlx = { version = "0.6", features = ["postgres", "runtime-tokio-native-tls"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-tower-http = { version = "0.4", features = ["trace"] }
-tower = { version = "0.4", features = ["limit"] }
-jsonwebtoken = "8.0"
-argon2 = "0.5"
-rand = "0.8"
-opentelemetry = { version = "0.19", features = ["rt-tokio"] }
-opentelemetry-jaeger = { version = "0.18", features = ["rt-tokio"] }
-tracing-opentelemetry = "0.19"
-metrics = "0.20"
-metrics-exporter-prometheus = "0.11"
+opentelemetry = { version = "0.18", features = ["rt-tokio"] }
+tracing-opentelemetry = "0.18"
+opentelemetry-jaeger = { version = "0.17", features = ["rt-tokio"] }
 tonic = "0.8"
 prost = "0.11"
-async-trait = "0.1"
-thiserror = "1.0"
-anyhow = "1.0"
+redis = { version = "0.22", features = ["tokio-comp"] }
+jsonwebtoken = "8.0"
+uuid = { version = "1.0", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+clap = "3.0"
 reqwest = { version = "0.11", features = ["json"] }
-oauth2 = "4.3"
-base64 = "0.21"
-config = "0.13"
+thiserror = "1.0"
 
 [build-dependencies]
 tonic-build = "0.8"

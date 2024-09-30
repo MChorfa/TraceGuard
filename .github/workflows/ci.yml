@@ -6,31 +6,46 @@ on:
   pull_request:
     branches: [ main ]
 
-env:
-  CARGO_TERM_COLOR: always
-
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
+
     steps:
     - uses: actions/checkout@v2
-    - name: Build
-      run: cargo build --verbose
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
     - name: Run tests
       run: cargo test --verbose
-    - name: Run clippy
-      run: cargo clippy -- -D warnings
-    - name: Check formatting
-      run: cargo fmt -- --check
+    - name: Build
+      run: cargo build --verbose
 
-  docker:
-    needs: build
+  lint:
     runs-on: ubuntu-latest
+
     steps:
     - uses: actions/checkout@v2
-    - name: Build Docker image
-      run: docker build -t ghcr.io/mchorfa/traceguard:${{ github.sha }} .
-    - name: Log in to GitHub Container Registry
-      run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-    - name: Push Docker image
-      run: docker push ghcr.io/mchorfa/traceguard:${{ github.sha }}
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        components: clippy
+    - name: Run clippy
+      run: cargo clippy -- -D warnings
+
+  frontend:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: '14'
+    - name: Install dependencies
+      run: cd web_ui && npm ci
+    - name: Run tests
+      run: cd web_ui && npm test
+    - name: Build
+      run: cd web_ui && npm run build

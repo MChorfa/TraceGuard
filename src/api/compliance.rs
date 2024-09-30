@@ -1,68 +1,47 @@
 use axum::{
-    extract::State,
+    extract::{Path, State},
     Json,
-    http::StatusCode,
-    response::IntoResponse,
 };
 use serde::{Deserialize, Serialize};
+use crate::error::Result;
+use crate::models::ComplianceReport;
 use crate::database::Database;
-use crate::error::AppError;
-use crate::compliance::ComplianceManager;
-use tracing::{info, error, instrument};
 
-#[derive(Debug, Deserialize)]
+#[derive(Deserialize)]
 pub struct GenerateReportRequest {
     tenant_id: String,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ComplianceReport {
-    id: i32,
-    report_type: String,
-    content: String,
-    generated_at: chrono::DateTime<chrono::Utc>,
-}
-
-#[instrument(skip(db, compliance_manager))]
-pub async fn generate_compliance_report(
-    State(db): State<Database>,
-    State(compliance_manager): State<ComplianceManager>,
-    Json(request): Json<GenerateReportRequest>,
-) -> Result<Json<ComplianceReport>, AppError> {
-    info!("Generating compliance report for tenant: {}", request.tenant_id);
-    
-    let oscal_report = compliance_manager.generate_oscal_report(&request.tenant_id).await?;
-    
-    let report = ComplianceReport {
-        id: 1, // In a real implementation, this would be generated or retrieved from the database
-        report_type: "OSCAL".to_string(),
-        content: serde_json::to_string(&oscal_report)?,
-        generated_at: chrono::Utc::now(),
-    };
-
-    // In a real implementation, you would save the report to the database here
-    // db.save_compliance_report(&report).await?;
-
-    info!("Compliance report generated successfully for tenant: {}", request.tenant_id);
-    Ok(Json(report))
-}
-
-pub async fn generate_compliance_report(
-    Json(payload): Json<GenerateReportRequest>,
-    compliance_manager: axum::extract::Extension<ComplianceManager>,
-) -> Result<impl IntoResponse, AppError> {
-    let report = compliance_manager.generate_oscal_report(&payload.tenant_id).await?;
-    
-    let response = GenerateReportResponse {
-        report_id: report.id().to_string(),
-        content: serde_json::to_string(&report)?,
-    };
-
-    Ok((StatusCode::OK, Json(response)))
+    sbom_id: String,
+    framework: String,
 }
 
 #[derive(Serialize)]
 pub struct GenerateReportResponse {
     report_id: String,
     content: String,
+}
+
+pub async fn generate_compliance_report(
+    State(db): State<Database>,
+    Json(request): Json<GenerateReportRequest>,
+) -> Result<Json<GenerateReportResponse>> {
+    // Generate compliance report logic here
+    let report = ComplianceReport::generate(
+        &db,
+        &request.tenant_id,
+        &request.sbom_id,
+        &request.framework,
+    ).await?;
+
+    Ok(Json(GenerateReportResponse {
+        report_id: report.id,
+        content: report.content,
+    }))
+}
+
+pub async fn get_compliance_report(
+    State(db): State<Database>,
+    Path(report_id): Path<String>,
+) -> Result<Json<ComplianceReport>> {
+    let report = db.get_compliance_report(&report_id).await?;
+    Ok(Json(report))
 }

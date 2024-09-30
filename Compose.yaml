@@ -1,0 +1,87 @@
+version: "3.9"
+
+services:
+  traceguard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: traceguard-app
+    ports:
+      - "8080:8080"
+    environment:
+      - RUST_LOG=info
+      - DATABASE_URL=postgres://traceguard:traceguard@postgres:5432/traceguard
+      - JWT_SECRET=${JWT_SECRET:-your_jwt_secret_here}
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin}
+      - MINIO_USE_SSL=false
+    volumes:
+      - .:/usr/src/traceguard
+    command: cargo run --release
+    depends_on:
+      - postgres
+      - minio
+
+  postgres:
+    image: postgres:17.0
+    container_name: traceguard-db
+    environment:
+      POSTGRES_USER: traceguard
+      POSTGRES_PASSWORD: traceguard
+      POSTGRES_DB: traceguard
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  minio:
+    image: minio/minio
+    container_name: traceguard-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+
+  redis:
+    image: redis:6.2
+    container_name: traceguard-redis
+    ports:
+      - "6379:6379"
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.25
+    container_name: traceguard-jaeger
+    ports:
+      - "16686:16686"
+      - "14268:14268"
+    environment:
+      - COLLECTOR_ZIPKIN_HTTP_PORT=9411
+
+  prometheus:
+    image: prom/prometheus:v2.30.3
+    container_name: traceguard-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana:8.2.2
+    container_name: traceguard-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+    volumes:
+      - grafana_data:/var/lib/grafana
+
+volumes:
+  postgres_data:
+  minio_data:
+  grafana_data:
