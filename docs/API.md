@@ -34,6 +34,14 @@ Create a new SBOM.
 
 Request Body:
 
+### Get SBOM Relationships
+
+GET /api/sboms/relationships
+
+Retrieves the relationships between SBOMs.
+
+Response:
+
 ## Provenance Endpoints
 
 ### List Provenance Records

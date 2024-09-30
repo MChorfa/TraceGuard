@@ -34,10 +34,9 @@ use tracing_subscriber::FmtSubscriber;
 
 use auth::oidc::{create_oidc_providers, OIDCConfig};
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Initialize tracing
-    tracing_subscriber::fmt::init();
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    env_logger::init_from_env(Env::default().default_filter_or("info"));
 
     let app = Router::new()
         .route("/api/sboms", get(api::list_sboms).post(api::create_sbom))

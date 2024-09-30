@@ -1,29 +1,39 @@
-import React, { useCallback } from 'react';
-import { Button, message, Upload } from 'antd';
+import React, { useState } from 'react';
+import { Upload, message, Button } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
-import { RcFile } from 'antd/lib/upload';
+import { RcFile, UploadProps } from 'antd/es/upload';
 import { uploadSBOM } from '../../api/sbom';
 
 const SBOMUpload: React.FC = () => {
-  const handleUpload = useCallback(async (file: RcFile) => {
+  const [uploading, setUploading] = useState(false);
+
+  const handleUpload = async (file: RcFile) => {
+    setUploading(true);
     try {
       await uploadSBOM(file);
       message.success('SBOM uploaded successfully');
     } catch (error) {
-      console.error('Error uploading SBOM:', error);
       message.error('Failed to upload SBOM');
+      console.error('Upload error:', error);
+    } finally {
+      setUploading(false);
     }
-  }, []);
+  };
+
+  const uploadProps: UploadProps = {
+    accept: '.json,.xml,.spdx',
+    beforeUpload: (file) => {
+      handleUpload(file);
+      return false;
+    },
+    showUploadList: false,
+  };
 
   return (
-    <Upload
-      accept=".json,.xml"
-      beforeUpload={(file) => {
-        handleUpload(file);
-        return false;
-      }}
-    >
-      <Button icon={<UploadOutlined />}>Upload SBOM</Button>
+    <Upload {...uploadProps}>
+      <Button icon={<UploadOutlined />} loading={uploading} disabled={uploading}>
+        {uploading ? 'Uploading...' : 'Upload SBOM'}
+      </Button>
     </Upload>
   );
 };

@@ -11,6 +11,11 @@ use crate::database::Database;
 use crate::error::AppError;
 use crate::models::SBOM;
 use tracing::{info, error, instrument};
+use actix_web::{web, HttpResponse, Responder};
+use crate::services::sbom_service::SBOMService;
+use crate::utils::error::AppError;
+use log::{info, error};
+use crate::middleware::auth::AuthMiddleware;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SBOM {
@@ -103,4 +108,28 @@ fn process_sbom_data(data: &[u8]) -> Result<SBOM, AppError> {
         content: String::from_utf8_lossy(data).to_string(),
         user_id: 1, // Placeholder user ID
     })
+}
+
+pub async fn get_sbom_relationships(
+    sbom_service: web::Data<SBOMService>,
+) -> Result<impl Responder, AppError> {
+    info!("Fetching SBOM relationships");
+    match sbom_service.get_sbom_relationships().await {
+        Ok(relationships) => {
+            info!("Successfully fetched {} SBOM relationships", relationships.len());
+            Ok(HttpResponse::Ok().json(relationships))
+        }
+        Err(e) => {
+            error!("Failed to fetch SBOM relationships: {:?}", e);
+            Err(e)
+        }
+    }
+}
+
+pub fn config(cfg: &mut web::ServiceConfig) {
+    cfg.service(
+        web::scope("/api/sboms")
+            .route("", web::get().to(get_sboms))
+            .route("/relationships", web::get().to(get_sbom_relationships))
+    );
 }

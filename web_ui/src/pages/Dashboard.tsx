@@ -1,32 +1,49 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Card, Row, Col, Select } from 'antd';
+import { Layout, Card, Row, Col, Select, message } from 'antd';
 import { useAuth } from '../hooks/useAuth';
 import SBOMList from '../components/SBOM/SBOMList';
+import SBOMGraph from '../components/SBOM/SBOMGraph';
 import ProvenanceList from '../components/Provenance/ProvenanceList';
 import ComplianceReport from '../components/Compliance/ComplianceReport';
+import { fetchSBOMs, fetchSBOMRelationships } from '../api/sbom';
+import { SBOM } from '../types';
 
 const { Content } = Layout;
 const { Option } = Select;
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
-  const [layout, setLayout] = useState<string[]>([]);
+  const [layout, setLayout] = useState<string[]>(['sbom', 'sbomGraph']);
+  const [sboms, setSBOMs] = useState<SBOM[]>([]);
+  const [relationships, setRelationships] = useState<[string, string][]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Load user's dashboard layout preference
-    const savedLayout = localStorage.getItem(`dashboard_layout_${user?.id}`);
-    setLayout(savedLayout ? JSON.parse(savedLayout) : ['sboms', 'provenance', 'compliance']);
-  }, [user]);
+    loadSBOMData();
+  }, []);
 
-  const saveLayout = (newLayout: string[]) => {
-    setLayout(newLayout);
-    localStorage.setItem(`dashboard_layout_${user?.id}`, JSON.stringify(newLayout));
+  const loadSBOMData = async () => {
+    try {
+      setLoading(true);
+      const [sbomData, relationshipData] = await Promise.all([
+        fetchSBOMs(),
+        fetchSBOMRelationships()
+      ]);
+      setSBOMs(sbomData);
+      setRelationships(relationshipData);
+    } catch (error) {
+      message.error('Failed to load SBOM data');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const renderComponent = (componentKey: string) => {
-    switch (componentKey) {
-      case 'sboms':
-        return <SBOMList />;
+  const renderComponent = (key: string) => {
+    switch (key) {
+      case 'sbom':
+        return <SBOMList sboms={sboms} loading={loading} />;
+      case 'sbomGraph':
+        return <SBOMGraph sboms={sboms} relationships={relationships} loading={loading} />;
       case 'provenance':
         return <ProvenanceList />;
       case 'compliance':
@@ -37,24 +54,25 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <Content>
-      <h1>Dashboard</h1>
+    <Content style={{ padding: '0 50px' }}>
+      <h1>Welcome, {user?.name}!</h1>
       <Select
         mode="multiple"
-        style={{ width: '100%', marginBottom: 16 }}
-        placeholder="Customize your dashboard"
+        style={{ width: '100%', marginBottom: '20px' }}
+        placeholder="Select dashboard components"
         value={layout}
-        onChange={saveLayout}
+        onChange={setLayout}
       >
-        <Option value="sboms">SBOMs</Option>
+        <Option value="sbom">SBOM List</Option>
+        <Option value="sbomGraph">SBOM Graph</Option>
         <Option value="provenance">Provenance</Option>
         <Option value="compliance">Compliance</Option>
       </Select>
       <Row gutter={[16, 16]}>
-        {layout.map((componentKey) => (
-          <Col key={componentKey} xs={24} sm={12} lg={8}>
-            <Card title={componentKey.toUpperCase()}>
-              {renderComponent(componentKey)}
+        {layout.map((key) => (
+          <Col key={key} xs={24} sm={24} md={12} lg={12} xl={6}>
+            <Card title={key.toUpperCase()} style={{ height: '100%' }}>
+              {renderComponent(key)}
             </Card>
           </Col>
         ))}
