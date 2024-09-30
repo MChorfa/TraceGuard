@@ -14,7 +14,6 @@ TraceGuard is a robust, enterprise-grade platform designed for secure, traceable
 - Web UI for SBOM and Provenance Management
 - CLI for CI/CD pipelines
 - gRPC Service for efficient communication between the backend and frontend
-- OpenID Connect (OIDC) Authentication
 
 ## Getting Started
 
@@ -44,35 +43,27 @@ TraceGuard is a robust, enterprise-grade platform designed for secure, traceable
    npm install
    ```
 
-4. Set up the CLI:
+4. Set up the database:
    ```
-   cd cli
-   go build
-   ```
-
-5. Set up the database:
-   ```
-   psql -c "CREATE DATABASE traceguard"
+   createdb traceguard
    sqlx database create
    sqlx migrate run
    ```
 
-6. Configure OIDC providers:
-   Create a `.env` file in the root directory and add your OIDC provider credentials.
-
-7. Start the development servers:
+5. Start the development server:
    ```
-   # In one terminal
    cargo run
+   ```
 
-   # In another terminal
+6. In a separate terminal, start the frontend development server:
+   ```
    cd web_ui
    npm start
    ```
 
 ## Usage
 
-Refer to the `docs/API.md` file for detailed API documentation and usage instructions.
+Visit `http://localhost:3000` in your web browser to access the TraceGuard web interface. You can now upload SBOMs, view provenance information, and generate compliance reports.
 
 ## Contributing
 
@@ -80,4 +71,4 @@ Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduc
 
 ## License
 
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.

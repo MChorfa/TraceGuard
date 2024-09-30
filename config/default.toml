@@ -1,0 +1,9 @@
+database_url = "postgres://localhost/traceguard"
+server_host = "127.0.0.1"
+server_port = 8080
+jwt_secret = "your-secret-key"
+jwt_expiration = 3600
+minio_endpoint = "localhost:9000"
+minio_access_key = "minioadmin"
+minio_secret_key = "minioadmin"
+minio_use_ssl = false

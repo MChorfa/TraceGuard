@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { Button, Paper, Typography, CircularProgress } from '@material-ui/core';
 import axios from 'axios';
 
 const SBOMUploader: React.FC = () => {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
+  const [message, setMessage] = useState('');
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files) {
@@ -14,54 +13,39 @@ const SBOMUploader: React.FC = () => {
   };
 
   const handleUpload = async () => {
-    if (!file) return;
+    if (!file) {
+      setMessage('Please select a file to upload');
+      return;
+    }
 
     setUploading(true);
     const formData = new FormData();
     formData.append('sbom', file);
 
     try {
-      const response = await axios.post('/api/sboms/upload', formData, {
+      const response = await axios.post('/api/sboms', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
-      setUploadStatus('SBOM uploaded successfully');
+      setMessage(`SBOM uploaded successfully. ID: ${response.data.id}`);
     } catch (error) {
+      setMessage('Error uploading SBOM. Please try again.');
       console.error('Error uploading SBOM:', error);
-      setUploadStatus('Error uploading SBOM');
     } finally {
       setUploading(false);
     }
   };
 
   return (
-    <Paper style={{ padding: '20px', marginTop: '20px' }}>
-      <Typography variant="h6">Upload SBOM</Typography>
-      <input
-        accept=".json,.xml,.spdx"
-        style={{ display: 'none' }}
-        id="raised-button-file"
-        type="file"
-        onChange={handleFileChange}
-      />
-      <label htmlFor="raised-button-file">
-        <Button variant="contained" component="span">
-          Select SBOM File
-        </Button>
-      </label>
-      {file && <Typography>{file.name}</Typography>}
-      <Button
-        onClick={handleUpload}
-        disabled={!file || uploading}
-        variant="contained"
-        color="primary"
-        style={{ marginTop: '10px' }}
-      >
-        {uploading ? <CircularProgress size={24} /> : 'Upload'}
-      </Button>
-      {uploadStatus && <Typography>{uploadStatus}</Typography>}
-    </Paper>
+    <div className="sbom-uploader">
+      <h2>Upload SBOM</h2>
+      <input type="file" onChange={handleFileChange} accept=".json,.xml,.spdx,.cdx" />
+      <button onClick={handleUpload} disabled={uploading}>
+        {uploading ? 'Uploading...' : 'Upload SBOM'}
+      </button>
+      {message && <p>{message}</p>}
+    </div>
   );
 };
 
