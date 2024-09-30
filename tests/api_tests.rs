@@ -350,4 +350,104 @@ async fn test_create_sbom() {
     // Add more assertions based on the expected response
 }
 
+#[tokio::test]
+async fn test_provenance_crud() {
+    let app = create_test_app().await;
+
+    // Test create provenance
+    let create_response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/provenance")
+                .header("Content-Type", "application/json")
+                .body(Body::from(r#"{"builder":{"id":"test-builder"},"build_type":"test","invocation":{"config_source":{"uri":"test-uri","digest":{"sha256":"test-sha256"}}},"materials":[]}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(create_response.status(), StatusCode::CREATED);
+    let created_record: ProvenanceRecord = serde_json::from_slice(&hyper::body::to_bytes(create_response.into_body()).await.unwrap()).unwrap();
+
+    // Test get provenance
+    let get_response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(&format!("/api/provenance/{}", created_record.id))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(get_response.status(), StatusCode::OK);
+
+    // Test update provenance
+    let update_response = app
+        .oneshot(
+            Request::builder()
+                .method("PUT")
+                .uri(&format!("/api/provenance/{}", created_record.id))
+                .header("Content-Type", "application/json")
+                .body(Body::from(r#"{"id":"...","builder":{"id":"updated-builder"},"build_type":"updated","invocation":{"config_source":{"uri":"updated-uri","digest":{"sha256":"updated-sha256"}}},"materials":[]}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(update_response.status(), StatusCode::OK);
+
+    // Test delete provenance
+    let delete_response = app
+        .oneshot(
+            Request::builder()
+                .method("DELETE")
+                .uri(&format!("/api/provenance/{}", created_record.id))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(delete_response.status(), StatusCode::NO_CONTENT);
+}
+
+#[tokio::test]
+async fn test_verify_slsa_provenance() {
+    let app = create_test_app().await;
+
+    // Create a test provenance record
+    let create_response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/provenance")
+                .header("Content-Type", "application/json")
+                .body(Body::from(r#"{"builder":{"id":"test-builder"},"build_type":"test","invocation":{"config_source":{"uri":"test-uri","digest":{"sha256":"test-sha256"}}},"materials":[]}"#))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    let created_record: ProvenanceRecord = serde_json::from_slice(&hyper::body::to_bytes(create_response.into_body()).await.unwrap()).unwrap();
+
+    // Test verify provenance
+    let verify_response = app
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(&format!("/api/provenance/{}/verify", created_record.id))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(verify_response.status(), StatusCode::OK);
+    let verification_result: bool = serde_json::from_slice(&hyper::body::to_bytes(verify_response.into_body()).await.unwrap()).unwrap();
+    assert!(verification_result);
+}
+
 // Add more tests for other endpoints

@@ -61,6 +61,12 @@ TraceGuard is a robust, enterprise-grade platform designed for secure, traceable
    npm start
    ```
 
+## Provenance Management
+
+TraceGuard now supports SLSA (Supply-chain Levels for Software Artifacts) provenance management. You can create, verify, and manage provenance records using the API, CLI, or Web UI.
+
+For more information on how to use the provenance features, please refer to the API documentation and the CLI usage guide.
+
 ## Usage
 
 Visit `http://localhost:3000` in your web browser to access the TraceGuard web interface. You can now upload SBOMs, view provenance information, and generate compliance reports.

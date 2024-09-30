@@ -8,25 +8,38 @@ use opentelemetry::KeyValue;
 use tracing_subscriber::Registry;
 use axum::http::{HeaderValue, Method};
 use tower_http::cors::CorsLayer;
+use opentelemetry_sdk::metrics::MeterProvider;
+use axum::{
+    routing::{get, post},
+    Router,
+};
+use sqlx::PgPool;
+use std::net::SocketAddr;
 
 mod api;
+mod auth;
 mod config;
 mod database;
 mod error;
 mod grpc;
+mod models;
 mod security;
 mod storage;
+mod sbom;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Initialize OpenTelemetry
-    let tracer = opentelemetry_jaeger::new_pipeline()
-        .with_service_name("traceguard")
-        .with_trace_config(Config::default().with_resource(Resource::new(vec![
-            KeyValue::new("service.name", "traceguard"),
-            KeyValue::new("service.version", env!("CARGO_PKG_VERSION")),
-        ])))
-        .install_batch(opentelemetry::runtime::Tokio)?;
+    // Initialize OpenTelemetry metrics
+    let meter_provider = MeterProvider::builder().build();
+    global::set_meter_provider(meter_provider);
+
+    // Initialize tracing
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::new(
+            std::env::var("RUST_LOG").unwrap_or_else(|_| "info".into()),
+        ))
+        .with(tracing_subscriber::fmt::layer())
+        .init();
 
     // Create a tracing layer with the configured tracer
     let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
@@ -66,6 +79,41 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Ensure all spans have been reported
     global::shutdown_tracer_provider();
+
+    // Set up database connection
+    let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let pool = PgPool::connect(&database_url)
+        .await
+        .expect("Failed to connect to Postgres");
+
+    // Set up OIDC providers
+    let oidc_providers = auth::oidc::create_oidc_providers(vec![
+        ("github".to_string(), auth::oidc::OIDCConfig {
+            client_id: std::env::var("GITHUB_CLIENT_ID").expect("GITHUB_CLIENT_ID must be set"),
+            client_secret: std::env::var("GITHUB_CLIENT_SECRET").expect("GITHUB_CLIENT_SECRET must be set"),
+            redirect_uri: std::env::var("GITHUB_REDIRECT_URI").expect("GITHUB_REDIRECT_URI must be set"),
+            issuer_url: "https://github.com".to_string(),
+        }),
+        // Add more providers here
+    ]);
+
+    // Build our application with a route
+    let app = Router::new()
+        .route("/api/sboms", get(api::list_sboms).post(api::create_sbom))
+        .route("/api/sboms/:id", get(api::get_sbom))
+        .route("/api/provenance/:artifact_id", get(api::get_provenance))
+        .route("/auth/:provider/login", get(api::oidc_login))
+        .route("/auth/:provider/callback", get(api::oidc_callback))
+        .layer(axum::Extension(pool))
+        .layer(axum::Extension(oidc_providers));
+
+    // Run it
+    let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
+    tracing::info!("listening on {}", addr);
+    axum::Server::bind(&addr)
+        .serve(app.into_make_service())
+        .await
+        .unwrap();
 
     Ok(())
 }

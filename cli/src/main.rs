@@ -37,6 +37,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .help("The compliance framework")
                 .required(true)
                 .index(3)))
+        .subcommand(SubCommand::with_name("get-provenance")
+            .about("Get a provenance record")
+            .arg(Arg::with_name("id")
+                .help("The provenance record ID")
+                .required(true)
+                .index(1)))
+        .subcommand(SubCommand::with_name("verify-provenance")
+            .about("Verify a provenance record")
+            .arg(Arg::with_name("id")
+                .help("The provenance record ID")
+                .required(true)
+                .index(1)))
         .get_matches();
 
     let client = reqwest::Client::new();
@@ -87,6 +99,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .await?;
 
             println!("Compliance report generated successfully. Response: {:?}", response);
+        },
+        ("get-provenance", Some(sub_m)) => {
+            let id = sub_m.value_of("id").unwrap();
+            let response = client.get(&format!("http://localhost:8080/api/provenance/{}", id))
+                .send()
+                .await?;
+            println!("Provenance record: {:?}", response.json::<serde_json::Value>().await?);
+        },
+        ("verify-provenance", Some(sub_m)) => {
+            let id = sub_m.value_of("id").unwrap();
+            let response = client.get(&format!("http://localhost:8080/api/provenance/{}/verify", id))
+                .send()
+                .await?;
+            println!("Provenance verification result: {:?}", response.json::<bool>().await?);
         },
         _ => println!("Invalid command. Use --help for usage information."),
     }
