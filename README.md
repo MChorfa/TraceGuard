@@ -2,6 +2,10 @@
 
 TraceGuard is a robust, enterprise-grade platform designed for secure, traceable, and compliant management of Software Bill of Materials (SBOMs), AI models, and data pipelines.
 
+## DISCLAIMER ❗❗❗
+
+<span style="color:red;">❗ This project is a fictional example created for educational purposes. It does not represent a real company or product. ❗</span>
+
 ## Features
 
 - Multi-SBOM Support (CycloneDX, SPDX, SWID)
